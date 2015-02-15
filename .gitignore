@@ -1,22 +1,54 @@
-.settings
+# IntelliJ config files #
+#########################
+.idea/*
 .project
-/upload/surveys/*
-/styles/gringegreen/images/Thumbs.db
-/upload/templates/*
-/tmp/runtime/HTML
-/application/controllers/admin/updater.php
-/tmp/*.html
-/tmp/*.lss
-/tmp/*.png
-/tmp/*.xls
-/tmp/*.lsa
-/tmp/upload/fu*
-/upload/.htaccess
-/nbproject
+*.iml
+
+# Watson template and uploads created when testing #
+#########################
+/templates/watson_*
+/upload/templates/watson_1*
+
+# Temporary directories
+############
+/tmp/runtime/*
 /tmp/assets/*
-/tmp/runtime/cache/*
-.svn
-/third_party/jqgrid/src
-.settings/org.eclipse.php.core.prefs
-.buildpath
-/application/config/config.php
+!/tmp/runtime/readme.txt
+/tmp/upload/*
+!/tmp/upload/readme.txt
+/tmp/template*
+/tmp/assets
+
+# Packages #
+############
+*.7z
+*.dmg
+*.gz
+*.bz2
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.tgz
+
+# Logs and databases #
+######################
+*.log
+
+# OS generated files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+._*
+
+# Vim generated files #
+######################
+*.un~
+
+# SASS #
+##########
+.sass-cache
+
