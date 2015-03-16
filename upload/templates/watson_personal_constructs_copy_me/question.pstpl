@@ -38,14 +38,17 @@
            var rSetGroupId = realGroupId1;
            var rSetQuestionId = realQuestionId1;
 
-          if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length == 0) {
-            rSetGroupId = realGroupId2;
-            rSetQuestionId = realQuestionId2;
-            if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length == 0) {
-              rSetGroupId = realGroupId3;
-              rSetQuestionId = realQuestionId3;
-            }
-          }
+           // support clinical use, which does not have multiple question groups for each self (Real, ideal, ought)
+           if (typeof realGroupId2 != 'undefined') {
+               if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length == 0) {
+                 rSetGroupId = realGroupId2;
+                 rSetQuestionId = realQuestionId2;
+                 if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length == 0) {
+                   rSetGroupId = realGroupId3;
+                   rSetQuestionId = realQuestionId3;
+                 }
+               }
+           }
 
           if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length > 0) {
               $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').change(function() {
@@ -162,9 +165,12 @@
          var rGroupId = idealGroupId1;
          var rQuestionId = idealQuestionId1;
 
-         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').length == 0) {
-             rGroupId = idealGroupId2;
-             rQuestionId = idealQuestionId2;
+         // support clinical use, which does not have multiple question groups for each self (Real, ideal, ought)
+         if (typeof idealGroupId2 != 'undefined') {
+             if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').length == 0) {
+                 rGroupId = idealGroupId2;
+                 rQuestionId = idealQuestionId2;
+             }
          }
 
          if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').length > 0) {
@@ -284,11 +290,13 @@
               var oGroupId = oughtGroupId1;
               var oQuestionId = oughtQuestionId1;
 
-              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').length == 0) {
-                  oGroupId = oughtGroupId2;
-                  oQuestionId = oughtQuestionId2;
+              // support clinical use, which does not have multiple question groups for each self (Real, ideal, ought)
+              if (typeof oughtGroupId2 != 'undefined') {
+                   if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').length == 0) {
+                       oGroupId = oughtGroupId2;
+                       oQuestionId = oughtQuestionId2;
+                   }
               }
-
 
               if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').length > 0) {
                   $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').change(function() {
