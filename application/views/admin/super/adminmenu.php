@@ -11,12 +11,7 @@
                 </strong>
                 <?php } ?>
         </div>
-
-        <?php if($showupdate): ?>
-            <div id="update-small-notification" class='menubar-title-right <?php if(Yii::app()->session['notificationstate']=='1' || Yii::app()->session['unstable_update'] ){echo 'hidden';};?> fade in'>
-                        <strong><?php eT('New update available:');?></strong> <a href="<?php echo Yii::app()->createUrl("admin/globalsettings", array("update"=>'updatebuttons')); ?>"><?php eT('Click here to use ComfortUpdate or to download it.');?></a>
-            </div>
-        <?php endif; ?>
+        <div class='menubar-title-right'><a href='<?php echo "https://bitbucket.org/jackwarner/watson3/downloads";?>' target="_blank"><?php echo "Watson (Version RC12)";?></a></div>
     </div>
     <div class='menubar-main'>
         <div class='menubar-left'>
