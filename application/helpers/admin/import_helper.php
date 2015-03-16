@@ -817,7 +817,10 @@ function XMLImportSurvey($sFullFilePath,$sXMLdata=NULL,$sNewSurveyName=NULL,$iDe
         $results['error'] = gT("This is not a valid LimeSurvey survey structure XML file.");
         return $results;
     }
-
+    $pre_personal_characteristics = "";
+    $question_groups['R'] = array();
+    $question_groups['I'] = array();
+    $question_groups['O'] = array();
     $iDBVersion = (int) $xml->DBVersion;
     $aQIDReplacements=array();
     $aQuestionCodeReplacements=array();
@@ -991,6 +994,16 @@ function XMLImportSurvey($sFullFilePath,$sXMLdata=NULL,$sNewSurveyName=NULL,$iDe
                 $insertdata['gid']=$aGIDReplacements[$oldgid];
             }
             $newgid = QuestionGroup::model()->insertRecords($insertdata) or safeDie(gT("Error").": Failed to insert data [3]<br />");
+            $newgid = QuestionGroup::model()->insertRecords($insertdata) or safeDie($clang->gT("Error").": Failed to insert data [3]<br />");
+            if ($insertdata['group_name'] == 'Real Characteristics' || $insertdata['group_name'] == 'PC - Real Characteristics') {
+                $question_groups['R'][] = $newgid;
+            }
+            else if ($insertdata['group_name'] == 'Ideal Characteristics' || $insertdata['group_name'] == 'PC - Ideal Characteristics') {
+                $question_groups['I'][] = $newgid;
+            }
+            else if ($insertdata['group_name'] == 'Ought Characteristics' || $insertdata['group_name'] == 'PC - Ought Characteristics') {
+                $question_groups['O'][] = $newgid;
+            }
             $results['groups']++;
 
             if (!isset($aGIDReplacements[$oldgid]))
@@ -1526,6 +1539,60 @@ function XMLImportSurvey($sFullFilePath,$sXMLdata=NULL,$sNewSurveyName=NULL,$iDe
     }
     LimeExpressionManager::RevertUpgradeConditionsToRelevance($iNewSID);
     LimeExpressionManager::UpgradeConditionsToRelevance($iNewSID);
+
+    $js_variables = array();
+    if (!empty($question_groups['R'])) {
+        $real_count = 1;
+        $ideal_count = 1;
+        $ought_count = 1;
+        foreach ($results['FieldReMap'] as $code) {
+            $value = explode('X', $code);
+            if (isset($value[1]) && in_array($value[1],$question_groups['R'])) {
+                if (!array_key_exists((int)$value[1],$js_variables)) {
+                    $int = substr($value[2], 0, strpos($value[2], 'PC'));
+                    $js_variables[$value[1]] = "var realGroupId" . $real_count . " = " . $value[1] . ";";
+                    $js_variables[$value[1] . "-q"] = "var realQuestionId" . $real_count . " = " . $int . ";";
+                    $real_count++;
+                }
+            }
+            else if (isset($value[1]) && in_array($value[1],$question_groups['I'])) {
+                if (!array_key_exists((int)$value[1],$js_variables)) {
+                    $int = substr($value[2], 0, strpos($value[2], 'PC'));
+                    $js_variables[$value[1]] = "var idealGroupId" . $ideal_count . " = " . $value[1] . ";";
+                    $js_variables[$value[1] . "-q"] = "var idealQuestionId" . $ideal_count . " = " . $int . ";";
+                    $ideal_count++;
+                }
+            }
+            else if (isset($value[1]) && in_array($value[1],$question_groups['O'])) {
+                if (!array_key_exists((int)$value[1],$js_variables)) {
+                    $int = substr($value[2], 0, strpos($value[2], 'PC'));
+                    $js_variables[$value[1]] = "var oughtGroupId" . $ought_count . " = " . $value[1] . ";";
+                    $js_variables[$value[1] . "-q"] = "var oughtQuestionId" . $ought_count . " = " . $int . ";";
+                    $ought_count++;
+                }
+            }
+        }
+        $js_variables[] = "var surveyId = ".$value[0].";";
+    }
+    if (!empty($js_variables)) {
+        $pre_personal_characteristics = str_replace("[REPLACE_ME]", implode(PHP_EOL,$js_variables), $pre_personal_characteristics);
+    }
+    else {
+        $pre_personal_characteristics = '<div {QUESTION_ESSENTIALS} class="{QUESTION_CLASS}{QUESTION_MAN_CLASS}{QUESTION_INPUT_ERROR_CLASS}">
+          <div class="survey-question">
+            <div class="survey-question-text">
+                  <span class="asterisk">{QUESTION_MANDATORY}</span><span class="qnumcode"> {QUESTION_NUMBER} {QUESTION_CODE} </span>{QUESTION_TEXT}<br /><span class="questionhelp">{QUESTION_HELP}</span>
+              {QUESTION_MAN_MESSAGE}
+              {QUESTION_VALID_MESSAGE}
+              {QUESTION_FILE_VALID_MESSAGE}
+            </div>
+            <div class="survey-question-answer">{ANSWER}</div>
+            <div class="survey-question-help">{QUESTIONHELP}</div>
+          </div>
+          <div class="survey-question-space"></div>
+        </div>';
+    }
+    file_put_contents($newdirname."/question.pstpl",$pre_personal_characteristics);
     return $results;
 }
 

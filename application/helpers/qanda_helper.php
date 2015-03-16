@@ -2944,8 +2944,14 @@ function do_multipleshorttext($ia)
         }
         else
         {
+            $row_count = 0;
             foreach ($aSubquestions as $ansrow)
             {
+                $row_count++;
+                $row_class = " highlighted";
+                if ($row_count % 2 == 0) {
+                    $row_class = "";
+                }
                 $myfname = $ia[1].$ansrow['title'];
                 if ($ansrow['question'] == "") {$ansrow['question'] = "&nbsp;";}
 
@@ -2954,7 +2960,7 @@ function do_multipleshorttext($ia)
                     $ansrow['question'] = "<span class='errormandatory'>{$ansrow['question']}</span>";
                 }
 
-                list($htmltbody2, $hiddenfield)=return_array_filter_strings($ia, $aQuestionAttributes, $thissurvey, $ansrow, $myfname, '', $myfname, "li","question-item answer-item text-item".$extraclass);
+                list($htmltbody2, $hiddenfield)=return_array_filter_strings($ia, $aQuestionAttributes, $thissurvey, $ansrow, $myfname, '', $myfname, "li","question-item answer-item text-item".$extraclass.$row_class);
                 $answer_main .= "\t$htmltbody2\n"
                 . "<label for=\"answer$myfname\">{$ansrow['question']}</label>\n"
                 . "\t<span>\n".$prefix."\n".'<input class="text '.$kpclass.'" type="text" size="'.$tiwidth.'" name="'.$myfname.'" id="answer'.$myfname.'" value="';
@@ -4533,12 +4539,17 @@ function do_array_increasesamedecrease($ia)
     $answer .=  $answer_body . "\t</tbody>\n</table>\n";
     return array($answer, $inputnames);
 }
-
+function startsWith($haystack, $needle)
+{
+    $length = strlen($needle);
+    return (substr($haystack, 0, $length) === $needle);
+}
 // ---------------------------------------------------------------
 // TMSW TODO - Can remove DB query by passing in answer list from EM
 function do_array($ia)
 {
     global $thissurvey;
+    $abstract_measure = false;
     $aLastMoveResult=LimeExpressionManager::GetLastMoveResult();
     $aMandatoryViolationSubQ=($aLastMoveResult['mandViolation'] && $ia[6] == 'Y') ? explode("|",$aLastMoveResult['unansweredSQs']) : array();
     $repeatheadings = Yii::app()->getConfig("repeatheadings");
@@ -4623,7 +4634,55 @@ function do_array($ia)
             ++$numrows;
             $caption.=gT("The last cell are for no answer. ");
         }
-        $cellwidth = round( ($columnswidth / $numrows ) , 1 );
+        // the number is the the number of choices, 1-7, in a LIKERT scale
+        define("LIKERT", 7);
+        // if the question code matches one of these, Abstract Measure logic will override most other logic
+        define("RI_MEASURE", 'RIMEASURE');
+        define("RO_MEASURE", 'ROMEASURE');
+        
+        $image_url = '/upload/images/true_scale.png';
+
+        $show_likert = false;
+        $show_importantance = false;
+        $extra_styling = "";
+        if ($numrows == LIKERT) {
+            $show_likert = true;
+            if (detect_ie()) {
+                $extra_styling =  "style='width:250px; margin-left: -10px;'";
+            }
+            else {
+                $extra_styling =  "style='width:258px; margin-left: -8px;'";
+            }
+            $right_exists = true;
+            $answerwidth = "72"; // in pixels
+            $importance_question_groups = array('IMPORTIDEAL', 'IMPORTIDEAL2', 'IMPORTOUGHT', 'IM01', 'IM02');
+            if (in_array($ia[2], $importance_question_groups)) {
+                $image_url = '/upload/images/importance_ideal_ought/trues.png';
+                $right_exists = false;
+                $show_importantance = true;
+            }
+
+        }
+        if (startsWith($ia[2],RI_MEASURE) || startsWith($ia[2],RO_MEASURE)) {
+            $abstract_measure = true;
+            $show_likert = false;
+            $right_exists = false;
+        }
+
+        $rightwidth = " width='81px'";
+        if (detect_ie()) {
+            $rightwidth = " width='84px'";
+        }
+        $cellwidth = round( ($columnswidth / $numrows ) , 1 )."%";
+        if ($show_likert) {
+            $cellwidth = "30";
+            if ($show_importantance) {
+                $cellwidth = "37";
+            }
+        }
+        if ($abstract_measure) {
+            $extraclass = 'abstract-measure';
+        }
 
         $answer_start = "\n<table class=\"question subquestions-list questions-list {$extraclass}\" summary=\"{$caption}\">\n";
         $answer_head_line= "\t<td>&nbsp;</td>\n";
@@ -4636,7 +4695,13 @@ function do_array($ia)
             {
                 $answer_head_line .= "\t<th>".gT('No answer')."</th>\n";
             }
-        $answer_head = "\t<thead><tr class=\"dontread\">\n".$answer_head_line."</tr></thead>\n\t\n";
+        if ($show_likert) {
+            $answer_head_line = "\t\t\t<td align='right' colspan='9'><img src='".$image_url."'></td>\n";
+        }
+        $answer_head = "\t<thead><tr>\n".$answer_head_line."</tr></thead>\n\t\n";
+        if ($abstract_measure) {
+            $answer_head = '';
+        }
 
         $answer = '<tbody>';
         $trbc = '';
@@ -4668,24 +4733,49 @@ function do_array($ia)
             //
             // TMSW - is this correct?
             $trbc = alternation($trbc , 'row');
+            if ($abstract_measure) {
+                $trbc = 'array1';
+            }
             list($htmltbody2, $hiddenfield)=return_array_filter_strings($ia, $aQuestionAttributes, $thissurvey, $ansrow, $myfname, $trbc, $myfname,"tr","$trbc answers-list radio-list");
             $fn++;
             $answer .= $htmltbody2;
 
-            $answer .= "\t<th class=\"answertext\">\n$answertext"
-            . $hiddenfield
-            . "<input type=\"hidden\" name=\"java$myfname\" id=\"java$myfname\" value=\"";
-            if (isset($_SESSION['survey_'.Yii::app()->getConfig('surveyID')][$myfname]))
-            {
-                $answer .= $_SESSION['survey_'.Yii::app()->getConfig('surveyID')][$myfname];
+            if (!$abstract_measure) {
+                $answer .= "\t<th class=\"answertext\">\n$answertext"
+                  . $hiddenfield
+                  . "<input type=\"hidden\" name=\"java$myfname\" id=\"java$myfname\" value=\"";
+                if (isset($_SESSION['survey_' . Yii::app()->getConfig('surveyID')][$myfname])) {
+                    $answer .= $_SESSION['survey_' . Yii::app()->getConfig('surveyID')][$myfname];
+                }
             }
-            $answer .= "\" />\n\t</th>\n";
-
             $thiskey=0;
             foreach ($labelcode as $ld)
             {
-                $answer .= "\t\t\t<td class=\"answer_cell_00$ld answer-item radio-item\">\n"
-                . "\t<input class=\"radio\" type=\"radio\" name=\"$myfname\" value=\"$ld\" id=\"answer$myfname-$ld\"";
+                $likertlabel = "";
+                $likert_width = "";
+                $abstract_class = "";
+                if ($show_likert) {
+                    $likertlabel = "<div style='font-size:13px; padding: 4px 0 4px 0;'>$ld</div>";
+                    $likert_width = "15";
+                }
+                if ($abstract_measure) {
+
+                    // images for abstract measures
+                    $a_measures[] = "0.gif";
+                    $a_measures[] = "16.gif";
+                    $a_measures[] = "33.gif";
+                    $a_measures[] = "50.gif";
+                    $a_measures[] = "66.gif";
+                    $a_measures[] = "83.gif";
+                    $a_measures[] = "100.gif";
+
+                    $likertlabel = "<img src='/upload/images/abstract_measures/".$a_measures[$thiskey]."'>";
+                    $abstract_class = 'abstract-answers';
+                }
+                $answer .= "\t\t\t<td class=\"answer_cell_00$ld answer-item radio-item $abstract_class\" width=\"$likert_width\">$likertlabel\n"
+                . "<label class=\"hide read\" for=\"answer$myfname-$ld\">{$labelans[$thiskey]}</label>\n"
+                . "\t<input class=\"radio\" type=\"radio\" name=\"$myfname\" value=\"$ld\" id=\"answer$myfname-$ld\" title=\""
+                . HTMLEscape(strip_tags($labelans[$thiskey])).'"';
                 if (isset($_SESSION['survey_'.Yii::app()->getConfig('surveyID')][$myfname]) && $_SESSION['survey_'.Yii::app()->getConfig('surveyID')][$myfname] == $ld)
                 {
                     $answer .= CHECKED;
@@ -4705,7 +4795,7 @@ function do_array($ia)
             }
             elseif ($right_exists)
             {
-                $answer .= "\t<td class=\"answertextright\">&nbsp;</td>\n";
+                $answer .= "\t<td class=\"answertextright\"".$rightwidth.">&nbsp;</td>\n";
             }
 
             if ($ia[6] != 'Y' && SHOW_NO_ANSWER == 1)
@@ -4731,6 +4821,14 @@ function do_array($ia)
         $answer_cols = "\t<colgroup class=\"col-responses\">\n"
         ."\t<col class=\"col-answers\" width=\"$answerwidth%\" />\n" ;
 
+        if ($show_likert) {
+            $answer_cols = "\t<colgroup class=\"col-responses\">\n"
+              ."\t<col class=\"col-answers\" width=\"274\" />\n" ;
+        }
+        if ($abstract_measure) {
+            $answer_cols = "";
+        }
+
         $odd_even = '';
         foreach ($labelans as $c)
         {
@@ -4749,7 +4847,10 @@ function do_array($ia)
         }
         $answer_cols .= "\t</colgroup>\n";
 
-        $answer = $answer_start . $answer_cols . $answer_head .$answer ."</table>\n";
+        $answer = $answer_start . $answer_cols . $answer_head . $answer . "</table>\n";
+        if ($abstract_measure) {
+            $answer .= "<tr><td colspan='8'><img src='/upload/images/abstract_measures/base.png' class='abstract-scale'></td></tr></table>\n";
+        }
     }
     elseif ($useDropdownLayout === true && count($lresult)> 0)
     {
@@ -5640,6 +5741,14 @@ function do_array_multiflexi($ia)
     return array($answer, $inputnames);
 }
 
+function detect_ie()
+{
+    if (isset($_SERVER['HTTP_USER_AGENT']) &&
+      (strpos($_SERVER['HTTP_USER_AGENT'], 'MSIE') !== false))
+        return true;
+    else
+        return false;
+}
 
 // ---------------------------------------------------------------
 // TMSW TODO - Can remove DB query by passing in answer list from EM

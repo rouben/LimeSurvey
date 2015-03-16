@@ -6724,7 +6724,7 @@
             'subQrelEqn' => implode('<br />',$prettyPrintSQRelEqns),
             'mandViolation' => (!$force) ? $qmandViolation : false,
             'anyUnanswered' => $anyUnanswered,
-            'mandTip' => (!$force) ? $mandatoryTip : '',
+            'mandTip' => '',
             'message' => $debug_qmessage,
             'updatedValues' => $updatedValues,
             'sumEqn' => (isset($sumEqn) ? $sumEqn : ''),
