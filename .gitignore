@@ -13,11 +13,11 @@
 ############
 /tmp/runtime/*
 /tmp/assets/*
+!/tmp/assets/README.txt
 !/tmp/runtime/readme.txt
 /tmp/upload/*
 !/tmp/upload/readme.txt
 /tmp/template*
-/tmp/assets
 
 # Packages #
 ############
