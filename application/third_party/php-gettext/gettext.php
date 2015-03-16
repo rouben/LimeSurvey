@@ -35,9 +35,9 @@
  */
 class gettext_reader {
   //public:
-   var $error = 0; // public variable that holds error code (0 if no error)
+  var $error = 0; // public variable that holds error code (0 if no error)
 
-   //private:
+  //private:
   var $BYTEORDER = 0;        // 0: low endian, 1: big endian
   var $STREAM = NULL;
   var $short_circuit = false;
@@ -61,16 +61,16 @@ class gettext_reader {
    * @return Integer from the Stream
    */
   function readint() {
-      if ($this->BYTEORDER == 0) {
-        // low endian
-        $input=unpack('V', $this->STREAM->read(4));
-        return array_shift($input);
-      } else {
-        // big endian
-        $input=unpack('N', $this->STREAM->read(4));
-        return array_shift($input);
-      }
+    if ($this->BYTEORDER == 0) {
+      // low endian
+      $input=unpack('V', $this->STREAM->read(4));
+      return array_shift($input);
+    } else {
+      // big endian
+      $input=unpack('N', $this->STREAM->read(4));
+      return array_shift($input);
     }
+  }
 
   function read($bytes) {
     return $this->STREAM->read($bytes);
@@ -84,12 +84,12 @@ class gettext_reader {
    */
   function readintarray($count) {
     if ($this->BYTEORDER == 0) {
-        // low endian
-        return unpack('V'.$count, $this->STREAM->read(4 * $count));
-      } else {
-        // big endian
-        return unpack('N'.$count, $this->STREAM->read(4 * $count));
-      }
+      // low endian
+      return unpack('V'.$count, $this->STREAM->read(4 * $count));
+    } else {
+      // big endian
+      return unpack('N'.$count, $this->STREAM->read(4 * $count));
+    }
   }
 
   /**
@@ -286,19 +286,19 @@ class gettext_reader {
     for ($i = 0; $i < strlen($expr); $i++) {
       $ch = $expr[$i];
       switch ($ch) {
-      case '?':
-        $res .= ' ? (';
-        $p++;
-        break;
-      case ':':
-        $res .= ') : (';
-        break;
-      case ';':
-        $res .= str_repeat( ')', $p) . ';';
-        $p = 0;
-        break;
-      default:
-        $res .= $ch;
+        case '?':
+          $res .= ' ? (';
+          $p++;
+          break;
+        case ':':
+          $res .= ') : (';
+          break;
+        case ';':
+          $res .= str_repeat( ')', $p) . ';';
+          $p = 0;
+          break;
+        default:
+          $res .= $ch;
       }
     }
     return $res;
@@ -358,7 +358,12 @@ class gettext_reader {
     $total = 0;
     $plural = 0;
 
-    eval("$string");
+    // this change is made mecessary because W&M disables eval() on its servers
+    // using workaround from
+    $eval = create_function("", "$string");
+    $eval();
+
+    // eval("$string");
     if ($plural >= $total) $plural = $total - 1;
     return $plural;
   }
