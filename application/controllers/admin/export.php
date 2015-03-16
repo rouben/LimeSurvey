@@ -11,6 +11,29 @@
 * See COPYRIGHT.php for copyright notices and details.
 *
 */
+define('CC_CODE', 'CCCODE');
+define('RIO_ORDER', 'Order');
+define('GENDER', 'GENDER');
+define('AGE', 'AGE');
+define('CCRI', 'CCRI');
+define('CCRO', 'CCRO');
+define('PCRI', 'PCRI');
+define('PCRO', 'PCRO');
+define('AMRI', 'AMRI');
+define('AMRO', 'AMRO');
+define('IMPI', 'IMPI');
+define('IMPO', 'IMPO');
+define('I_THI', 'ITHI');
+define('I_FEE', 'IFEE');
+define('I_DEC', 'IDEC');
+define('O_THI', 'OTHI');
+define('O_FEE', 'OFEE');
+define('O_DEC', 'ODEC');
+define('NUMBER_OF_CONVENTIONAL_CONSTRUCTS', 28);
+define('RI_MEASURE_SHORT', 'RI');
+define('RO_MEASURE_SHORT', 'RO');
+define('ABSTRACT_FIRST', 'ABSTRACTFIRST');
+define('COMPUTED_PRECISION', 3);
 
 /**
 * Export Action
@@ -121,6 +144,1501 @@ class export extends Survey_Common_Action {
         $qid = sanitize_int(Yii::app()->request->getParam('qid'));
         $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
         questionExport("exportstructurecsvQuestion", $iSurveyID, $gid, $qid);
+    }
+
+    /**
+     * Helper for Watson to
+     *
+     * @param $i
+     * @return int
+     */
+    private function getSelfNumber($i) {
+        $ret = $i % 6;
+        if ($ret == 0) {
+            $ret = 6;
+        }
+        return $ret;
+    }
+
+    /**
+     * Given a 1-36 code, return the self code as stored in the db
+     *
+     * @param $id 1-36 based on Neill's code scheme
+     * @param $self_id R,I,or O since each self is rated
+     */
+    private function getSelfCode($id, $self_id) {
+        /*
+         * This is how Neill lines up the codes
+         *
+         * PCRS1 ... PCRS6      correspond to  Real 1... Real 6
+         * PCRS7 ... PCRS12    correspond to  Op Real 1... Op Real 6
+         * PCRS13... PCRS18  correspond to  Ideal 1... Ideal 6
+         * PCRS19... PCRS24  correspond to  Op Ideal 1 to Op Ideal 6
+         * PCRS25... PCRS30  correspond to  Ought 1 to Ought 6
+         * PCRS31... PCRS36  correspond to  Op Ought 1 to Op Ought 6
+         */
+        if ($id >= 1 && $id <= 6) {
+            return $self_id . "RR" . $this->getSelfNumber($id);
+        }
+        else {
+            if ($id > 6 && $id <= 12) {
+                return $self_id . "ROPR" . $this->getSelfNumber($id);
+            }
+            else {
+                if ($id > 12 && $id <= 18) {
+                    return $self_id . "RI" . $this->getSelfNumber($id);
+                }
+                else {
+                    if ($id > 18 && $id <= 24) {
+                        return $self_id . "ROPI" . $this->getSelfNumber($id);
+                    }
+                    else {
+                        if ($id > 24 && $id <= 30) {
+                            return $self_id . "RO" . $this->getSelfNumber($id);
+                        }
+                        else {
+                            if ($id > 30 && $id <= 36) {
+                                return $self_id . "ROPO" . $this->getSelfNumber($id);
+                            }
+                            else {
+                                echo "Error! '$id' NOT recognized.  Dying...";
+                                exit;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the order for the PC, CC, AM, Imp, Ref metaprogram
+     *
+     * This function assumes no change in ordering in the parent metaprogram.
+     *
+     * @param $participant_code
+     * @param $abstract_first
+     */
+    private function getMetaprogramOrderCode($participant_code, $abstract_first) {
+        $value = '-';
+        $offset = 0;
+        if ($abstract_first == 'true') {
+            $offset = 6;
+        }
+        $participant_code = $participant_code % 6;
+        if ($participant_code == 0) {
+            $participant_code = 6;
+        }
+        return $participant_code + $offset;
+    }
+
+    /**
+     * Converts participant code to alphabetic RIO order code.
+     *
+     * @param $participant_code
+     * @return string
+     */
+    private function getRealIdealOughtCode($participant_code) {
+        $value = '-';
+        switch ($participant_code % 6) {
+            case 1:
+                $value = 'RIO';
+                break;
+            case 2:
+                $value = 'ROI';
+                break;
+            case 3:
+                $value = 'ORI';
+                break;
+            case 4:
+                $value = 'OIR';
+                break;
+            case 5:
+                $value = 'IOR';
+                break;
+            case 0:
+                $value = 'IRO';
+                break;
+        }
+        return $value;
+    }
+
+    public function exportpcimpref() {
+        $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+        if (!isset($iSurveyID)) {
+            $iSurveyID = returnGlobal('sid');
+        }
+
+        $this_survey = getSurveyInfo($iSurveyID);
+
+        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+            $this->getController()->error('Access denied!');
+        }
+        else {
+
+            $fn = "export_pc_imp_ref_rate_$iSurveyID.csv";
+            $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+            $s = ",";
+
+            $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+              ->findByPk($iSurveyID)->language);
+            $surveytable = "{{survey_$iSurveyID}}";
+
+            Survey::model()->findByPk($iSurveyID)->language;
+
+            $desired_order['startdate'] = 'DateTaken';
+            $desired_order[CC_CODE] = 'ParticipantCode';
+            $desired_order[RIO_ORDER] = 'Order';
+            $desired_order[AGE] = 'Age';
+            $desired_order[GENDER] = 'Gender';
+            $desired_order[PCRI] = PCRI . " Score";
+            $desired_order[PCRO] = PCRO . " Score";
+            $desired_order[IMPI] = "ImpI Score";
+            $desired_order[IMPO] = "ImpO Score";
+
+            $selves[0] = 'R';
+            $selves[1] = 'I';
+            $selves[2] = 'O';
+
+            // Personal constructs
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= 36; $i++) {
+                    $desired_order[$this->getSelfCode($i, $self)] = "PC" . $self . "S" . $i;
+                }
+            }
+
+            // Importance of Ideal/Ought Selves
+            $desired_order['ITHI'] = 'ImpI1';
+            $desired_order['IFEE'] = 'ImpI2';
+            $desired_order['IDEC'] = 'ImpI3';
+            $desired_order['OTHI'] = 'ImpO1';
+            $desired_order['OFEE'] = 'ImpO2';
+            $desired_order['ODEC'] = 'ImpO3';
+
+            // Reference person for Ought Self
+            $desired_order['mothe'] = 'Mother';
+            $desired_order['fathe'] = 'Father';
+            $desired_order['sibli'] = 'Sibling(s)';
+            $desired_order['frien'] = 'Friends';
+            $desired_order['close'] = 'Close Friend(s)';
+            $desired_order['girlf'] = 'Girlfriend';
+            $desired_order['boyfr'] = 'Boyfriend';
+            $desired_order['spous'] = 'Spouse';
+            $desired_order['peers'] = 'Peers';
+            $desired_order['socie'] = 'Society';
+            $desired_order['other'] = 'Other';
+
+            $firstline = "";
+            foreach ($desired_order as $field) {
+                $firstline .= $field;
+                $firstline .= $s;
+            }
+            $firstline .= "\n";
+            $vvoutput = $firstline;
+
+            $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+            $result = Yii::app()->db->createCommand($query)->query();
+
+
+            // Calculate difference in selves for Personal Constructs
+            $diff_pairs_real_ideal = array();
+            $diff_pairs_real_ought = array();
+
+            for ($i = 1; $i <= 24; $i++) {
+                $diff_pairs_real_ideal['PCRS' . $i] = 'PCIS' . $i;
+            }
+            for ($i = 1; $i <= 12; $i++) {
+                $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+            }
+            for ($i = 25; $i <= 36; $i++) {
+                $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+            }
+
+            foreach ($result->readAll() as $row) {
+                $collected_ratings = array();
+                $impi_collected_ratings = 0;
+                $impo_collected_ratings = 0;
+                $have_reached_reference = false;
+
+                foreach ($desired_order as $field => $research_purposes) {
+                    if ($field == 'mothe') {
+                        $have_reached_reference = true;
+                    }
+                    $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+                    if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+                        $field_key = 'title';
+                    }
+                    $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+                    if ($field == CC_CODE) {
+                        $value = round($value);
+                    }
+                    if ($field == RIO_ORDER) {
+                        $cc_code_field = round($this->getFieldValue($row, $fieldmap, CC_CODE, 'title'));
+                        $value = $this->getRealIdealOughtCode($cc_code_field);
+                    }
+                    if (is_null($value)) {
+                        $value = '';
+                    }
+                    if ($have_reached_reference) {
+                        if ($have_reached_reference && ($field == 'other')) {
+                            $value = '"'.$value.'"';
+                        }
+                        else {
+                            if ($value == 'Y') {
+                                $value = '1';
+                            }
+                            else {
+                                $value = '0';
+                            }
+                        }
+                    }
+                    else {
+                        $value = str_replace(
+                          array(
+                            "{",
+                            "\n",
+                            "\r",
+                            "\t"
+                          ),
+                          array(
+                            "{lbrace}",
+                            "{newline}",
+                            "{cr}",
+                            "{tab}"
+                          ),
+                          $value
+                        );
+                        if (substr($research_purposes, 0, 2) == 'PC') {
+                            if ($research_purposes != $desired_order[PCRI] && $research_purposes != $desired_order[PCRO]) {
+                                $collected_ratings[substr($research_purposes, 2, 1)][substr($field, 2)] = $value;
+                            }
+                        }
+                        if (substr($research_purposes, 0, 4) == 'ImpI') {
+                            if (is_numeric($value)) {
+                                $impi_collected_ratings += $value;
+                            }
+                        }
+                        if (substr($research_purposes, 0, 4) == 'ImpO') {
+                            if (is_numeric($value)) {
+                                $impo_collected_ratings += $value;
+                            }
+                        }
+                    }
+                    // one last tweak: excel likes to quote values when it
+                    // exports as tab-delimited (esp if value contains a comma,
+                    // oddly enough).  So we're going to encode a leading quote,
+                    // if it occurs, so that we can tell the difference between
+                    // strings that "really are" quoted, and those that excel quotes
+                    // for us.
+                    // yay!  that nasty soab won't hurt us now!
+                    if ($field == "submitdate" && !$value) {
+                        $value = "NULL";
+                    }
+                    $sun[] = $value;
+                }
+                /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+                 * right place in the array
+                 */
+                $sun[array_search(PCRI, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ideal, $collected_ratings), COMPUTED_PRECISION);
+                $sun[array_search(PCRO, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ought, $collected_ratings), COMPUTED_PRECISION);
+
+                $sun[array_search(IMPI, array_keys($desired_order))] = round(($impi_collected_ratings / 3), COMPUTED_PRECISION);
+                $sun[array_search(IMPO, array_keys($desired_order))] = round(($impo_collected_ratings / 3), COMPUTED_PRECISION);
+
+                $beach = implode($s, $sun);
+                $vvoutput .= $beach;
+                unset($sun);
+                $vvoutput .= "\n";
+            }
+            echo $vvoutput;
+            exit;
+        }
+    }
+
+  public function exportpcimprefclinical() {
+    $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+    if (!isset($iSurveyID)) {
+      $iSurveyID = returnGlobal('sid');
+    }
+
+    $this_survey = getSurveyInfo($iSurveyID);
+
+    if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+      $this->getController()->error('Access denied!');
+    }
+    else {
+
+      $fn = "export_pc_imp_ref_rate_$iSurveyID.csv";
+      $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+      $s = ",";
+
+      $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+        ->findByPk($iSurveyID)->language);
+      $surveytable = "{{survey_$iSurveyID}}";
+
+      Survey::model()->findByPk($iSurveyID)->language;
+
+      $desired_order['startdate'] = 'DateTaken';
+      $desired_order[CC_CODE] = 'ParticipantCode';
+      $desired_order[RIO_ORDER] = 'Order';
+      $desired_order[AGE] = 'Age';
+      $desired_order[GENDER] = 'Gender';
+      $desired_order[PCRI] = PCRI . " Score";
+      $desired_order[PCRO] = PCRO . " Score";
+      $desired_order[IMPI] = "ImpI Score";
+      $desired_order[IMPO] = "ImpO Score";
+
+      $selves[0] = 'R';
+      $selves[1] = 'I';
+      $selves[2] = 'O';
+
+      // Personal constructs
+      foreach ($selves as $self) {
+        for ($i = 1; $i <= 36; $i++) {
+          $desired_order[$this->getSelfCode($i, $self)] = "PC" . $self . "S" . $i;
+        }
+      }
+
+      // Importance of Ideal/Ought Selves
+      $desired_order['ITHI'] = 'ImpI1';
+      $desired_order['IFEE'] = 'ImpI2';
+      $desired_order['IDEC'] = 'ImpI3';
+      $desired_order['OTHI'] = 'ImpO1';
+      $desired_order['OFEE'] = 'ImpO2';
+      $desired_order['ODEC'] = 'ImpO3';
+
+      // Reference person for Ought Self
+      $desired_order['mothe'] = 'Mother';
+      $desired_order['fathe'] = 'Father';
+      $desired_order['sibli'] = 'Sibling(s)';
+      $desired_order['frien'] = 'Friends';
+      $desired_order['close'] = 'Close Friend(s)';
+      $desired_order['girlf'] = 'Girlfriend';
+      $desired_order['boyfr'] = 'Boyfriend';
+      $desired_order['spous'] = 'Spouse';
+      $desired_order['peers'] = 'Peers';
+      $desired_order['socie'] = 'Society';
+      $desired_order['other'] = 'Other';
+
+      $firstline = "";
+      foreach ($desired_order as $field) {
+        $firstline .= $field;
+        $firstline .= $s;
+      }
+      $firstline .= "\n";
+      $vvoutput = $firstline;
+
+      $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+      $result = Yii::app()->db->createCommand($query)->query();
+
+
+      // Calculate difference in selves for Personal Constructs
+      $diff_pairs_real_ideal = array();
+      $diff_pairs_real_ought = array();
+
+      for ($i = 1; $i <= 24; $i++) {
+        $diff_pairs_real_ideal['PCRS' . $i] = 'PCIS' . $i;
+      }
+      for ($i = 1; $i <= 12; $i++) {
+        $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+      }
+      for ($i = 25; $i <= 36; $i++) {
+        $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+      }
+
+      foreach ($result->readAll() as $row) {
+        $collected_ratings = array();
+        $impi_collected_ratings = 0;
+        $impo_collected_ratings = 0;
+        $have_reached_reference = false;
+
+        foreach ($desired_order as $field => $research_purposes) {
+          if ($field == 'mothe') {
+            $have_reached_reference = true;
+          }
+          $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+          if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+            $field_key = 'title';
+          }
+          $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+          if ($field == CC_CODE) {
+            $value = round($value);
+          }
+          if ($field == RIO_ORDER) {
+            $value = "RIO";
+          }
+          if (is_null($value)) {
+            $value = '';
+          }
+          if ($have_reached_reference) {
+            if ($have_reached_reference && ($field == 'other')) {
+              $value = '"'.$value.'"';
+            }
+            else {
+              if ($value == 'Y') {
+                $value = '1';
+              }
+              else {
+                $value = '0';
+              }
+            }
+          }
+          else {
+            $value = str_replace(
+              array(
+                "{",
+                "\n",
+                "\r",
+                "\t"
+              ),
+              array(
+                "{lbrace}",
+                "{newline}",
+                "{cr}",
+                "{tab}"
+              ),
+              $value
+            );
+            if (substr($research_purposes, 0, 2) == 'PC') {
+              if ($research_purposes != $desired_order[PCRI] && $research_purposes != $desired_order[PCRO]) {
+                $collected_ratings[substr($research_purposes, 2, 1)][substr($field, 2)] = $value;
+              }
+            }
+            if (substr($research_purposes, 0, 4) == 'ImpI') {
+              if (is_numeric($value)) {
+                $impi_collected_ratings += $value;
+              }
+            }
+            if (substr($research_purposes, 0, 4) == 'ImpO') {
+              if (is_numeric($value)) {
+                $impo_collected_ratings += $value;
+              }
+            }
+          }
+          // one last tweak: excel likes to quote values when it
+          // exports as tab-delimited (esp if value contains a comma,
+          // oddly enough).  So we're going to encode a leading quote,
+          // if it occurs, so that we can tell the difference between
+          // strings that "really are" quoted, and those that excel quotes
+          // for us.
+          // yay!  that nasty soab won't hurt us now!
+          if ($field == "submitdate" && !$value) {
+            $value = "NULL";
+          }
+          $sun[] = $value;
+        }
+        /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+         * right place in the array
+         */
+        $sun[array_search(PCRI, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ideal, $collected_ratings), COMPUTED_PRECISION);
+        $sun[array_search(PCRO, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ought, $collected_ratings), COMPUTED_PRECISION);
+
+        $sun[array_search(IMPI, array_keys($desired_order))] = round(($impi_collected_ratings / 3), COMPUTED_PRECISION);
+        $sun[array_search(IMPO, array_keys($desired_order))] = round(($impo_collected_ratings / 3), COMPUTED_PRECISION);
+
+        $beach = implode($s, $sun);
+        $vvoutput .= $beach;
+        unset($sun);
+        $vvoutput .= "\n";
+      }
+      echo $vvoutput;
+      exit;
+    }
+  }
+
+    public function exportpcccamimpref() {
+        $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+        if (!isset($iSurveyID)) {
+            $iSurveyID = returnGlobal('sid');
+        }
+
+        $this_survey = getSurveyInfo($iSurveyID);
+
+        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+            $this->getController()->error('Access denied!');
+        }
+        else {
+
+            $fn = "export_metaprogram_rate_$iSurveyID.csv";
+            $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+            $s = ",";
+
+            $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+              ->findByPk($iSurveyID)->language);
+            $surveytable = "{{survey_$iSurveyID}}";
+
+            Survey::model()->findByPk($iSurveyID)->language;
+
+            $desired_order['startdate'] = 'DateTaken';
+            $desired_order[CC_CODE] = 'ParticipantCode';
+            $desired_order[RIO_ORDER] = 'Order';
+            $desired_order[AGE] = 'Age';
+            $desired_order[GENDER] = 'Gender';
+            $desired_order[PCRI] = PCRI . " Score";
+            $desired_order[PCRO] = PCRO . " Score";
+            $desired_order[CCRI] = CCRI . " Score";
+            $desired_order[CCRO] = CCRO . " Score";
+            $desired_order[AMRI] = "AMRID Score";
+            $desired_order[AMRO] = "AMROD Score";
+            $desired_order[IMPI] = "ImpI Score";
+            $desired_order[IMPO] = "ImpO Score";
+
+            $selves[0] = 'R';
+            $selves[1] = 'I';
+            $selves[2] = 'O';
+
+            // Personal constructs
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= 36; $i++) {
+                    $desired_order[$this->getSelfCode($i, $self)] = "PC" . $self . "S" . $i;
+                }
+            }
+
+            // Conventional constructs
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                    $desired_order['C'.$self.'S'.$i] = 'CC'.$self.'S'.$i;
+                }
+            }
+
+            // Abstract Measures
+            $desired_order[RI_MEASURE_SHORT] = 'AMRI';
+            $desired_order[RO_MEASURE_SHORT] = 'AMRO';
+
+            // Importance of Ideal/Ought Selves
+            $desired_order[I_THI] = 'ImpI1';
+            $desired_order[I_FEE] = 'ImpI2';
+            $desired_order[I_DEC] = 'ImpI3';
+            $desired_order[O_THI] = 'ImpO1';
+            $desired_order[O_FEE] = 'ImpO2';
+            $desired_order[O_DEC] = 'ImpO3';
+
+            // Reference person for Ought Self
+            $desired_order['mothe'] = 'Mother';
+            $desired_order['fathe'] = 'Father';
+            $desired_order['sibli'] = 'Sibling(s)';
+            $desired_order['frien'] = 'Friends';
+            $desired_order['close'] = 'Close Friend(s)';
+            $desired_order['girlf'] = 'Girlfriend';
+            $desired_order['boyfr'] = 'Boyfriend';
+            $desired_order['spous'] = 'Spouse';
+            $desired_order['peers'] = 'Peers';
+            $desired_order['socie'] = 'Society';
+            $desired_order['other'] = 'Other';
+
+            $firstline = "";
+            foreach ($desired_order as $field) {
+                $firstline .= $field;
+                $firstline .= $s;
+            }
+            $firstline .= "\n";
+            $vvoutput = $firstline;
+
+            $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+            $result = Yii::app()->db->createCommand($query)->query();
+
+
+            // Calculate difference in selves for Personal Constructs
+            $diff_pairs_real_ideal = array();
+            $diff_pairs_real_ought = array();
+
+            for ($i = 1; $i <= 24; $i++) {
+                $diff_pairs_real_ideal['PCRS' . $i] = 'PCIS' . $i;
+            }
+            for ($i = 1; $i <= 12; $i++) {
+                $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+            }
+            for ($i = 25; $i <= 36; $i++) {
+                $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+            }
+
+            // Calculate difference in selves for Conventional Constructs
+            $cc_diff_pairs_real_ideal = array();
+            $cc_diff_pairs_real_ought = array();
+
+            for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                $cc_diff_pairs_real_ideal['CRS' . $i] = 'CIS' . $i;
+            }
+            for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                $cc_diff_pairs_real_ought['CRS' . $i] = 'COS' . $i;
+            }
+
+            foreach ($result->readAll() as $row) {
+                $collected_ratings = array();
+                $cc_collected_ratings = array();
+                $impi_collected_ratings = 0;
+                $impo_collected_ratings = 0;
+                $have_reached_reference = false;
+                $amrid = '';
+                $amrod = '';
+
+                foreach ($desired_order as $field => $research_purposes) {
+                    if ($field == 'mothe') {
+                        $have_reached_reference = true;
+                    }
+                    $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+                    if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+                        $field_key = 'title';
+                    }
+                    $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+                    if ($field == CC_CODE) {
+                        $value = round($value);
+                    }
+                    if ($field == RI_MEASURE_SHORT) {
+                        if (strlen($value) > 0) {
+                            $amrid = 1 - $value;
+                        }
+                    }
+                    if ($field == RO_MEASURE_SHORT) {
+                        if (strlen($value) > 0) {
+                            $amrod = 1 - $value;
+                        }
+                    }
+                    if ($field == RIO_ORDER) {
+                        $cc_code_field = round($this->getFieldValue($row, $fieldmap, CC_CODE, 'title'));
+                        $value = $this->getMetaprogramOrderCode($cc_code_field, $this->getFieldValue($row, $fieldmap, ABSTRACT_FIRST, 'title'));
+                    }
+                    if (is_null($value)) {
+                        $value = '';
+                    }
+                    if ($have_reached_reference) {
+                        if ($have_reached_reference && ($field == 'other')) {
+                            $value = '"'.$value.'"';
+                        }
+                        else {
+                            if ($value == 'Y') {
+                                $value = '1';
+                            }
+                            else {
+                                $value = '0';
+                            }
+                        }
+                    }
+                    else {
+                        $value = str_replace(
+                          array(
+                            "{",
+                            "\n",
+                            "\r",
+                            "\t"
+                          ),
+                          array(
+                            "{lbrace}",
+                            "{newline}",
+                            "{cr}",
+                            "{tab}"
+                          ),
+                          $value
+                        );
+                        if (substr($research_purposes, 0, 2) == 'PC') {
+                            if ($research_purposes != $desired_order[PCRI] && $research_purposes != $desired_order[PCRO]) {
+                                $collected_ratings[substr($research_purposes, 2, 1)][substr($field, 2)] = $value;
+                            }
+                        }
+                        if (substr($research_purposes, 0, 2) == 'CC') {
+                            $cc_collected_ratings[substr($research_purposes, 2, 1)][$field] = $value;
+                        }
+                        if (substr($research_purposes, 0, 4) == 'ImpI') {
+                            if (is_numeric($value)) {
+                                $impi_collected_ratings += $value;
+                            }
+                        }
+                        if (substr($research_purposes, 0, 4) == 'ImpO') {
+                            if (is_numeric($value)) {
+                                $impo_collected_ratings += $value;
+                            }
+                        }
+                    }
+                    // one last tweak: excel likes to quote values when it
+                    // exports as tab-delimited (esp if value contains a comma,
+                    // oddly enough).  So we're going to encode a leading quote,
+                    // if it occurs, so that we can tell the difference between
+                    // strings that "really are" quoted, and those that excel quotes
+                    // for us.
+                    // yay!  that nasty soab won't hurt us now!
+                    if ($field == "submitdate" && !$value) {
+                        $value = "NULL";
+                    }
+                    $sun[] = $value;
+                }
+                /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+                 * right place in the array
+                 */
+                $sun[array_search(PCRI, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ideal, $collected_ratings), COMPUTED_PRECISION);
+                $sun[array_search(PCRO, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ought, $collected_ratings), COMPUTED_PRECISION);
+
+                $sun[array_search(CCRI, array_keys($desired_order))] = round($this->calculateConventionalSelfDifference($cc_diff_pairs_real_ideal, $cc_collected_ratings), COMPUTED_PRECISION);
+                $sun[array_search(CCRO, array_keys($desired_order))] = round($this->calculateConventionalSelfDifference($cc_diff_pairs_real_ought, $cc_collected_ratings), COMPUTED_PRECISION);
+
+                $sun[array_search(AMRI, array_keys($desired_order))] = round($amrid, COMPUTED_PRECISION);
+                $sun[array_search(AMRO, array_keys($desired_order))] = round($amrod, COMPUTED_PRECISION);
+
+                $sun[array_search(IMPI, array_keys($desired_order))] = round(($impi_collected_ratings / 3), COMPUTED_PRECISION);
+                $sun[array_search(IMPO, array_keys($desired_order))] = round(($impo_collected_ratings / 3), COMPUTED_PRECISION);
+
+                $beach = implode($s, $sun);
+                $vvoutput .= $beach;
+                unset($sun);
+                $vvoutput .= "\n";
+            }
+            echo $vvoutput;
+            exit;
+        }
+    }
+
+    public function exportccimpref() {
+        $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+        if (!isset($iSurveyID)) {
+            $iSurveyID = returnGlobal('sid');
+        }
+
+        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+            $this->getController()->error('Access denied!');
+        }
+        else {
+
+            $fn = "export_cc_imp_ref_rate_$iSurveyID.csv";
+            $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+            $s = ",";
+
+            $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+              ->findByPk($iSurveyID)->language);
+            $surveytable = "{{survey_$iSurveyID}}";
+
+            Survey::model()->findByPk($iSurveyID)->language;
+
+            $desired_order['startdate'] = 'DateTaken';
+            $desired_order[CC_CODE] = 'ParticipantCode';
+            $desired_order[RIO_ORDER] = 'Order';
+            $desired_order[AGE] = 'Age';
+            $desired_order[GENDER] = 'Gender';
+            $desired_order[CCRI] = CCRI . " Score";
+            $desired_order[CCRO] = CCRO . " Score";
+            $desired_order[IMPI] = "ImpI Score";
+            $desired_order[IMPO] = "ImpO Score";
+
+            $selves[0] = 'R';
+            $selves[1] = 'I';
+            $selves[2] = 'O';
+
+            // Conventional constructs
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                    $desired_order['C'.$self.'S'.$i] = 'CC'.$self.'S'.$i;
+                }
+            }
+
+            // Importance of Ideal/Ought Selves
+            $desired_order[I_THI] = 'ImpI1';
+            $desired_order[I_FEE] = 'ImpI2';
+            $desired_order[I_DEC] = 'ImpI3';
+            $desired_order[O_THI] = 'ImpO1';
+            $desired_order[O_FEE] = 'ImpO2';
+            $desired_order[O_DEC] = 'ImpO3';
+
+            // Reference person for Ought Self
+            $desired_order['mothe'] = 'Mother';
+            $desired_order['fathe'] = 'Father';
+            $desired_order['sibli'] = 'Sibling(s)';
+            $desired_order['frien'] = 'Friends';
+            $desired_order['close'] = 'Close Friend(s)';
+            $desired_order['girlf'] = 'Girlfriend';
+            $desired_order['boyfr'] = 'Boyfriend';
+            $desired_order['spous'] = 'Spouse';
+            $desired_order['peers'] = 'Peers';
+            $desired_order['socie'] = 'Society';
+            $desired_order['other'] = 'Other';
+
+            $firstline = "";
+            foreach ($desired_order as $field) {
+                $firstline .= $field;
+                $firstline .= $s;
+            }
+            $firstline .= "\n";
+            $vvoutput = $firstline;
+
+            $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+            $result = Yii::app()->db->createCommand($query)->query();
+
+            // Calculate difference in selves for Conventional Constructs
+            $cc_diff_pairs_real_ideal = array();
+            $cc_diff_pairs_real_ought = array();
+
+            for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                $cc_diff_pairs_real_ideal['CRS' . $i] = 'CIS' . $i;
+            }
+            for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                $cc_diff_pairs_real_ought['CRS' . $i] = 'COS' . $i;
+            }
+
+            foreach ($result->readAll() as $row) {
+                $cc_collected_ratings = array();
+                $impi_collected_ratings = 0;
+                $impo_collected_ratings = 0;
+                $have_reached_reference = false;
+
+                foreach ($desired_order as $field => $research_purposes) {
+                    if ($field == 'mothe') {
+                        $have_reached_reference = true;
+                    }
+                    $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+                    if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+                        $field_key = 'title';
+                    }
+                    $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+                    if ($field == CC_CODE) {
+                        $value = round($value);
+                    }
+                    if ($field == RIO_ORDER) {
+                        $cc_code_field = round($this->getFieldValue($row, $fieldmap, CC_CODE, 'title'));
+                        $value = $this->getRealIdealOughtCode($cc_code_field);
+                    }
+                    if (is_null($value)) {
+                        $value = '';
+                    }
+                    if ($have_reached_reference) {
+                        if ($have_reached_reference && ($field == 'other')) {
+                            $value = '"'.$value.'"';
+                        }
+                        else {
+                            if ($value == 'Y') {
+                                $value = '1';
+                            }
+                            else {
+                                $value = '0';
+                            }
+                        }
+                    }
+                    else {
+                        $value = str_replace(
+                          array(
+                            "{",
+                            "\n",
+                            "\r",
+                            "\t"
+                          ),
+                          array(
+                            "{lbrace}",
+                            "{newline}",
+                            "{cr}",
+                            "{tab}"
+                          ),
+                          $value
+                        );
+                        if (substr($research_purposes, 0, 2) == 'CC') {
+                            $cc_collected_ratings[substr($research_purposes, 2, 1)][$field] = $value;
+                        }
+                        if (substr($research_purposes, 0, 4) == 'ImpI') {
+                            if (is_numeric($value)) {
+                                $impi_collected_ratings += $value;
+                            }
+                        }
+                        if (substr($research_purposes, 0, 4) == 'ImpO') {
+                            if (is_numeric($value)) {
+                                $impo_collected_ratings += $value;
+                            }
+                        }
+                    }
+                    // one last tweak: excel likes to quote values when it
+                    // exports as tab-delimited (esp if value contains a comma,
+                    // oddly enough).  So we're going to encode a leading quote,
+                    // if it occurs, so that we can tell the difference between
+                    // strings that "really are" quoted, and those that excel quotes
+                    // for us.
+                    // yay!  that nasty soab won't hurt us now!
+                    if ($field == "submitdate" && !$value) {
+                        $value = "NULL";
+                    }
+                    $sun[] = $value;
+                }
+                /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+                 * right place in the array
+                 */
+                $sun[array_search(CCRI, array_keys($desired_order))] = round($this->calculateConventionalSelfDifference($cc_diff_pairs_real_ideal, $cc_collected_ratings), COMPUTED_PRECISION);
+                $sun[array_search(CCRO, array_keys($desired_order))] = round($this->calculateConventionalSelfDifference($cc_diff_pairs_real_ought, $cc_collected_ratings), COMPUTED_PRECISION);
+
+                $sun[array_search(IMPI, array_keys($desired_order))] = round(($impi_collected_ratings / 3), COMPUTED_PRECISION);
+                $sun[array_search(IMPO, array_keys($desired_order))] = round(($impo_collected_ratings / 3), COMPUTED_PRECISION);
+
+                $beach = implode($s, $sun);
+                $vvoutput .= $beach;
+                unset($sun);
+                $vvoutput .= "\n";
+            }
+            echo $vvoutput;
+            exit;
+        }
+    }
+
+    /**
+     * Exports characteristics for Personal Constructs for Research Use.
+     */
+    public function exportpcchars() {
+        $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+        if (!isset($iSurveyID)) {
+            $iSurveyID = returnGlobal('sid');
+        }
+
+        $this_survey = getSurveyInfo($iSurveyID);
+
+        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+            $this->getController()->error('Access denied!');
+        }
+        else {
+
+            $fn = "export_pc_chars_$iSurveyID.csv";
+            $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+            $s = ",";
+
+            $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+              ->findByPk($iSurveyID)->language);
+            $surveytable = "{{survey_$iSurveyID}}";
+
+            Survey::model()->findByPk($iSurveyID)->language;
+
+            $desired_order['startdate'] = 'DateTaken';
+            $desired_order[CC_CODE] = 'ParticipantCode';
+            $desired_order[RIO_ORDER] = 'Order';
+            $desired_order[AGE] = 'Age';
+            $desired_order[GENDER] = 'Gender';
+
+            $selves[0] = 'R';
+            $selves[1] = 'I';
+            $selves[2] = 'O';
+
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= 6; $i++) {
+                    $desired_order["PC" . $self . $i] = $self . "S" . $i;
+                }
+                for ($i = 1; $i <= 6; $i++) {
+                    $desired_order["OP" . $self . $i] = "Op" . $self . "S" . $i;
+                }
+            }
+
+            $firstline = "";
+            foreach ($desired_order as $field) {
+                $firstline .= $field;
+                $firstline .= $s;
+            }
+            $firstline .= "\n";
+            $vvoutput = $firstline;
+
+            $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+            $result = Yii::app()->db->createCommand($query)->query();
+
+            foreach ($result->readAll() as $row) {
+
+                foreach ($desired_order as $field => $research_purposes) {
+                    $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+                    if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+                        $field_key = 'title';
+                    }
+                    $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+                    if ($field == CC_CODE) {
+                        $value = round($value);
+                    }
+                    if ($field == RIO_ORDER) {
+                        $cc_code_field = round($this->getFieldValue($row, $fieldmap, CC_CODE, 'title'));
+                        $value = $this->getRealIdealOughtCode($cc_code_field);
+                    }
+                    if (is_null($value)) {
+                        $value = '';
+                    }
+                    else {
+                        $value = str_replace(
+                          array(
+                            "{",
+                            "\n",
+                            "\r",
+                            "\t"
+                          ),
+                          array(
+                            "{lbrace}",
+                            "{newline}",
+                            "{cr}",
+                            "{tab}"
+                          ),
+                          $value
+                        );
+                    }
+                    // one last tweak: excel likes to quote values when it
+                    // exports as tab-delimited (esp if value contains a comma,
+                    // oddly enough).  So we're going to encode a leading quote,
+                    // if it occurs, so that we can tell the difference between
+                    // strings that "really are" quoted, and those that excel quotes
+                    // for us.
+                    $value = preg_replace('/^"/', '{quote}', $value);
+                    // yay!  that nasty soab won't hurt us now!
+                    if ($field == "submitdate" && !$value) {
+                        $value = "NULL";
+                    }
+                    $sun[] = $value;
+                }
+                /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+                 * right place in the array
+                 */
+                $beach = implode($s, $sun);
+                $vvoutput .= $beach;
+                unset($sun);
+                $vvoutput .= "\n";
+            }
+            echo $vvoutput;
+            exit;
+        }
+    }
+
+  public function exportpccharsclinical() {
+    $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+    if (!isset($iSurveyID)) {
+      $iSurveyID = returnGlobal('sid');
+    }
+
+    $this_survey = getSurveyInfo($iSurveyID);
+
+    if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+      $this->getController()->error('Access denied!');
+    }
+    else {
+
+      $fn = "export_pc_chars_$iSurveyID.csv";
+      $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+      $s = ",";
+
+      $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+        ->findByPk($iSurveyID)->language);
+      $surveytable = "{{survey_$iSurveyID}}";
+
+      Survey::model()->findByPk($iSurveyID)->language;
+
+      $desired_order['startdate'] = 'DateTaken';
+      $desired_order[CC_CODE] = 'ParticipantCode';
+      $desired_order[RIO_ORDER] = 'Order';
+      $desired_order[AGE] = 'Age';
+      $desired_order[GENDER] = 'Gender';
+
+      $selves[0] = 'R';
+      $selves[1] = 'I';
+      $selves[2] = 'O';
+
+      foreach ($selves as $self) {
+        for ($i = 1; $i <= 6; $i++) {
+          $desired_order["PC" . $self . $i] = $self . "S" . $i;
+        }
+        for ($i = 1; $i <= 6; $i++) {
+          $desired_order["OP" . $self . $i] = "Op" . $self . "S" . $i;
+        }
+      }
+
+      $firstline = "";
+      foreach ($desired_order as $field) {
+        $firstline .= $field;
+        $firstline .= $s;
+      }
+      $firstline .= "\n";
+      $vvoutput = $firstline;
+
+      $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+      $result = Yii::app()->db->createCommand($query)->query();
+
+      foreach ($result->readAll() as $row) {
+
+        foreach ($desired_order as $field => $research_purposes) {
+          $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+          if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+            $field_key = 'title';
+          }
+          $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+          if ($field == CC_CODE) {
+            $value = round($value);
+          }
+          if ($field == RIO_ORDER) {
+            $value = "RIO";
+          }
+          if (is_null($value)) {
+            $value = '';
+          }
+          else {
+            $value = str_replace(
+              array(
+                "{",
+                "\n",
+                "\r",
+                "\t"
+              ),
+              array(
+                "{lbrace}",
+                "{newline}",
+                "{cr}",
+                "{tab}"
+              ),
+              $value
+            );
+          }
+          // one last tweak: excel likes to quote values when it
+          // exports as tab-delimited (esp if value contains a comma,
+          // oddly enough).  So we're going to encode a leading quote,
+          // if it occurs, so that we can tell the difference between
+          // strings that "really are" quoted, and those that excel quotes
+          // for us.
+          $value = preg_replace('/^"/', '{quote}', $value);
+          // yay!  that nasty soab won't hurt us now!
+          if ($field == "submitdate" && !$value) {
+            $value = "NULL";
+          }
+          $sun[] = $value;
+        }
+        /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+         * right place in the array
+         */
+        $beach = implode($s, $sun);
+        $vvoutput .= $beach;
+        unset($sun);
+        $vvoutput .= "\n";
+      }
+      echo $vvoutput;
+      exit;
+    }
+  }
+
+    /**
+     * Custom data export for Conventional Constructs for Research Use (same random order) for Neill
+     * Watson's research purposes.
+     */
+    public function exportccrate() {
+        $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+        if (!isset($iSurveyID)) {
+            $iSurveyID = returnGlobal('sid');
+        }
+
+        $this_survey = getSurveyInfo($iSurveyID);
+
+        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+            $this->getController()->error('Access denied!');
+        }
+        else {
+
+            $fn = "export_cc_rate_$iSurveyID.csv";
+            $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+            $s = ",";
+
+            $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+              ->findByPk($iSurveyID)->language);
+            $surveytable = "{{survey_$iSurveyID}}";
+
+            Survey::model()->findByPk($iSurveyID)->language;
+
+            $desired_order['startdate'] = 'DateTaken';
+            $desired_order[CC_CODE] = 'ParticipantCode';
+            $desired_order[RIO_ORDER] = 'Order';
+            $desired_order[AGE] = 'Age';
+            $desired_order[GENDER] = 'Gender';
+            $desired_order[CCRI] = CCRI . " Score";
+            $desired_order[CCRO] = CCRO . " Score";
+
+            $selves[0] = 'R';
+            $selves[1] = 'I';
+            $selves[2] = 'O';
+
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                    $desired_order['C'.$self.'S'.$i] = 'CC'.$self.'S'.$i;
+                }
+            }
+
+            $firstline = "";
+            foreach ($desired_order as $field) {
+                $firstline .= $field;
+                $firstline .= $s;
+            }
+            $firstline .= "\n";
+            $vvoutput = $firstline;
+
+            $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+            $result = Yii::app()->db->createCommand($query)->query();
+
+            $diff_pairs_real_ideal = array();
+            $diff_pairs_real_ought = array();
+
+            for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                $diff_pairs_real_ideal['CRS' . $i] = 'CIS' . $i;
+            }
+            for ($i = 1; $i <= NUMBER_OF_CONVENTIONAL_CONSTRUCTS; $i++) {
+                $diff_pairs_real_ought['CRS' . $i] = 'COS' . $i;
+            }
+
+            foreach ($result->readAll() as $row) {
+                $collected_ratings = array();
+
+                foreach ($desired_order as $field => $research_purposes) {
+                    $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+                    if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+                        $field_key = 'title';
+                    }
+                    $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+                    if ($field == CC_CODE) {
+                        $value = round($value);
+                    }
+                    if ($field == RIO_ORDER) {
+                        $cc_code_field = round($this->getFieldValue($row, $fieldmap, CC_CODE, 'title'));
+                        $value = $this->getRealIdealOughtCode($cc_code_field);
+                    }
+                    if (is_null($value)) {
+                        $value = '';
+                    }
+                    else {
+                        $value = str_replace(
+                          array(
+                            "{",
+                            "\n",
+                            "\r",
+                            "\t"
+                          ),
+                          array(
+                            "{lbrace}",
+                            "{newline}",
+                            "{cr}",
+                            "{tab}"
+                          ),
+                          $value
+                        );
+                        if (substr($research_purposes, 0, 2) == 'CC') {
+                            $collected_ratings[substr($research_purposes, 2, 1)][$field] = $value;
+                        }
+                    }
+                    // one last tweak: excel likes to quote values when it
+                    // exports as tab-delimited (esp if value contains a comma,
+                    // oddly enough).  So we're going to encode a leading quote,
+                    // if it occurs, so that we can tell the difference between
+                    // strings that "really are" quoted, and those that excel quotes
+                    // for us.
+                    $value = preg_replace('/^"/', '{quote}', $value);
+                    // yay!  that nasty soab won't hurt us now!
+                    if ($field == "submitdate" && !$value) {
+                        $value = "NULL";
+                    }
+                    $sun[] = $value;
+                }
+                /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+                 * right place in the array
+                 */
+                $sun[array_search(CCRI, array_keys($desired_order))] = round($this->calculateConventionalSelfDifference($diff_pairs_real_ideal, $collected_ratings), COMPUTED_PRECISION);
+                $sun[array_search(CCRO, array_keys($desired_order))] = round($this->calculateConventionalSelfDifference($diff_pairs_real_ought, $collected_ratings), COMPUTED_PRECISION);
+
+                $beach = implode($s, $sun);
+                $vvoutput .= $beach;
+                unset($sun);
+                $vvoutput .= "\n";
+            }
+            echo $vvoutput;
+            exit;
+        }
+    }
+
+    /**
+     * Custom data export for Personal Constructs for Research Use (same random order) for Neill
+     * Watson's research purposes.
+     */
+    public function exportpcrate() {
+        $iSurveyID = sanitize_int(Yii::app()->request->getParam('surveyid'));
+        if (!isset($iSurveyID)) {
+            $iSurveyID = returnGlobal('sid');
+        }
+
+        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'responses', 'export')) {
+            $this->getController()->error('Access denied!');
+        }
+        else {
+
+            $fn = "export_pc_rate_$iSurveyID.csv";
+            $this->_addHeaders($fn, "text/comma-separated-values", 0, "cache");
+
+            $s = ",";
+
+            $fieldmap = createFieldMap($iSurveyID, 'full', FALSE, FALSE, Survey::model()
+              ->findByPk($iSurveyID)->language);
+            $surveytable = "{{survey_$iSurveyID}}";
+
+            Survey::model()->findByPk($iSurveyID)->language;
+
+            $desired_order['startdate'] = 'DateTaken';
+            $desired_order[CC_CODE] = 'ParticipantCode';
+            $desired_order[RIO_ORDER] = 'Order';
+            $desired_order[AGE] = 'Age';
+            $desired_order[GENDER] = 'Gender';
+            $desired_order[PCRI] = PCRI . " Score";
+            $desired_order[PCRO] = PCRO . " Score";
+
+            $selves[0] = 'R';
+            $selves[1] = 'I';
+            $selves[2] = 'O';
+
+            foreach ($selves as $self) {
+                for ($i = 1; $i <= 36; $i++) {
+                    $desired_order[$this->getSelfCode($i, $self)] = "PC" . $self . "S" . $i;
+                }
+            }
+
+            $firstline = "";
+            foreach ($desired_order as $field) {
+                $firstline .= $field;
+                $firstline .= $s;
+            }
+            $firstline .= "\n";
+            $vvoutput = $firstline;
+
+            $query = "SELECT * FROM " . Yii::app()->db->quoteTableName($surveytable) . " where submitdate is not null ORDER BY id";
+
+            $result = Yii::app()->db->createCommand($query)->query();
+
+            $diff_pairs_real_ideal = array();
+            $diff_pairs_real_ought = array();
+
+            for ($i = 1; $i <= 24; $i++) {
+                $diff_pairs_real_ideal['PCRS' . $i] = 'PCIS' . $i;
+            }
+            for ($i = 1; $i <= 12; $i++) {
+                $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+            }
+            for ($i = 25; $i <= 36; $i++) {
+                $diff_pairs_real_ought['PCRS' . $i] = 'PCOS' . $i;
+            }
+
+            foreach ($result->readAll() as $row) {
+                $collected_ratings = array();
+
+                foreach ($desired_order as $field => $research_purposes) {
+                    $field_key = 'aid'; // name of subquestion column, which by convention are unique for Personal Constructs
+                    if ($field == CC_CODE || $field == AGE || $field == GENDER) {
+                        $field_key = 'title';
+                    }
+                    $value = $this->getFieldValue($row, $fieldmap, $field, $field_key);
+                    if ($field == CC_CODE) {
+                        $value = round($value);
+                    }
+                    if ($field == RIO_ORDER) {
+                        $cc_code_field = round($this->getFieldValue($row, $fieldmap, CC_CODE, 'title'));
+                        $value = $this->getRealIdealOughtCode($cc_code_field);
+                    }
+                    if (is_null($value)) {
+                        $value = '';
+                    }
+                    else {
+                        $value = str_replace(
+                          array(
+                            "{",
+                            "\n",
+                            "\r",
+                            "\t"
+                          ),
+                          array(
+                            "{lbrace}",
+                            "{newline}",
+                            "{cr}",
+                            "{tab}"
+                          ),
+                          $value
+                        );
+                        if (substr($research_purposes, 0, 2) == 'PC') {
+                            if ($research_purposes != $desired_order[PCRI] && $research_purposes != $desired_order[PCRO]) {
+                                $collected_ratings[substr($research_purposes, 2, 1)][substr($field, 2)] = $value;
+                            }
+                        }
+                    }
+                    // one last tweak: excel likes to quote values when it
+                    // exports as tab-delimited (esp if value contains a comma,
+                    // oddly enough).  So we're going to encode a leading quote,
+                    // if it occurs, so that we can tell the difference between
+                    // strings that "really are" quoted, and those that excel quotes
+                    // for us.
+                    $value = preg_replace('/^"/', '{quote}', $value);
+                    // yay!  that nasty soab won't hurt us now!
+                    if ($field == "submitdate" && !$value) {
+                        $value = "NULL";
+                    }
+                    $sun[] = $value;
+                }
+                /* All data is collected - we are ready to calculate RO and RI scores and put them in the
+                 * right place in the array
+                 */
+                $sun[array_search(PCRI, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ideal, $collected_ratings), COMPUTED_PRECISION);
+                $sun[array_search(PCRO, array_keys($desired_order))] = round($this->calculateSelfDifference($diff_pairs_real_ought, $collected_ratings), COMPUTED_PRECISION);
+
+                $beach = implode($s, $sun);
+                $vvoutput .= $beach;
+                unset($sun);
+                $vvoutput .= "\n";
+            }
+            echo $vvoutput;
+            exit;
+        }
+    }
+
+    /**
+     * Used to calculate the difference between Real and Ideal for Personal Constructs
+     */
+    private function calculateSelfDifference($selves_to_compare, $data) {
+        $sum = 0;
+        foreach ($selves_to_compare as $real_self => $ideal_or_ought_self) {
+            $array_index_of_rating_data = substr($real_self,4) - 1;
+            $real_value = array_values($data['R']);
+            $real_value = $real_value[$array_index_of_rating_data];
+            $ideal_or_ought_value = array_values($data[substr($ideal_or_ought_self,2,1)]);
+            $ideal_or_ought_value = $ideal_or_ought_value[$array_index_of_rating_data];
+
+            $sum = $sum + abs($real_value - $ideal_or_ought_value);
+        }
+        return $sum / count($selves_to_compare);
+    }
+    /**
+     * Used to calculate the difference between Real and Ideal for Conventional Constructs
+     */
+    private function calculateConventionalSelfDifference($which_two_selves, $data) {
+        $sum = 0;
+        foreach ($which_two_selves as $real_self => $ideal_or_ought_self) {
+            $real_value = $data['R'];
+            $real_value = $real_value[$real_self];
+            $ideal_or_ought_value = $data[substr($ideal_or_ought_self,1,1)];
+            $ideal_or_ought_value = $ideal_or_ought_value[$ideal_or_ought_self];
+            $sum = $sum + abs($real_value - $ideal_or_ought_value);
+        }
+        return $sum / count($which_two_selves);
+    }
+
+    /**
+     * @param $row_data
+     * @param $fieldmap
+     * @param $subquestion_code
+     * @return null|string
+     */
+    private function getFieldValue($row_data, $fieldmap, $subquestion_code, $fieldkey) {
+        if (!($subquestion_code == PCRI) && !($subquestion_code == PCRO)) {
+            if (array_key_exists($subquestion_code, $fieldmap)) {
+                return $row_data[$subquestion_code];
+            }
+            foreach ($fieldmap as $key => $map) {
+
+                if ($subquestion_code == $map[$fieldkey]) {
+                    if (isset($row_data[$key])) {
+                        return trim($row_data[$key]);
+                    }
+                }
+            }
+        }
+        return NULL;
     }
 
     public function exportresults()
