@@ -1,0 +1,11 @@
+                                                                                                                                {CHECKJAVASCRIPT}      
+<div id="container" class="box">
+      
+        <div id="obsah" class="content box">
+          <span style="font-size: 18px; font-weight: bold;">Introduction for Researcher</span>
+          <hr>
+          <div class="in">
+            <p class="survey-survey-language">{LANGUAGECHANGER}</p>
+			<p>{WELCOME}</p>
+
+                                                                                                

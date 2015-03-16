@@ -1,0 +1,404 @@
+                                                <div {QUESTION_ESSENTIALS} class="{QUESTION_CLASS}{QUESTION_MAN_CLASS}{QUESTION_INPUT_ERROR_CLASS}">
+	<div class="survey-question">
+		<div class="survey-question-text">
+        	<span class="asterisk">{QUESTION_MANDATORY}</span><span class="qnumcode"> {QUESTION_NUMBER} {QUESTION_CODE} </span>{QUESTION_TEXT}<br /><span class="questionhelp">{QUESTION_HELP}</span>
+			{QUESTION_MAN_MESSAGE}
+			{QUESTION_VALID_MESSAGE}
+			{QUESTION_FILE_VALID_MESSAGE}
+		</div>
+		<div class="survey-question-answer">{ANSWER}</div>
+		<div class="survey-question-help">{QUESTIONHELP}</div>
+	</div>
+	<script>
+	  // Customize these variables per survey!
+	  // Multiple groups exist to support ordering using Expression Manager.
+	  // This could be improved when LimeSurvey allows re-ordering of groups
+	  // based upon the response to Participant Code.
+	  [REPLACE_ME]
+      var matchErrorString = "You have already entered the characteristic ";
+
+      function clearText( fieldId )
+      {
+      	$( fieldId ).val( '' );
+      	$( fieldId ).focus();
+      }
+      function trim(s)
+      {
+        var l=0; var r=s.length -1;
+        while(l < s.length && s[l] == ' ')
+        {     l++; }
+        while(r > l && s[r] == ' ')
+        {     r-=1;     }
+        return s.substring(l, r+1);
+      }
+
+           var rSetGroupId = 0;
+           var rQuestionId = 0;
+
+           var rSetGroupId = realGroupId1;
+           var rSetQuestionId = realQuestionId1;
+
+          if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length == 0) {
+            rSetGroupId = realGroupId2;
+            rSetQuestionId = realQuestionId2;
+            if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length == 0) {
+              rSetGroupId = realGroupId3;
+              rSetQuestionId = realQuestionId3;
+            }
+          }
+
+          if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').length > 0) {
+              $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').change(function() {
+                  if ( $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').val() != '' )
+                  {
+                      var changedVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1').val().toUpperCase());
+                      for (var k=1; k<=6; k++) {
+                          if (k!=1) {
+                              var existingVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val().toUpperCase());
+                              if ( changedVal == existingVal )
+                              {
+                                  alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val() + '" ' + "for your REAL SELF.  Please enter a different characteristic." );
+                                  setTimeout( "clearText( '#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR1');", 200 );
+                              }
+                          }
+                      }
+                  }
+              });
+          }
+
+          if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR2').length > 0) {
+             $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR2').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR2').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR2').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=2) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val() + '" ' + "for your REAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR2');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR3').length > 0) {
+             $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR3').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR3').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR3').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=3) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val() + '" ' + "for your REAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR3');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR4').length > 0) {
+             $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR4').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR3').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR4').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=4) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val() + '" ' + "for your REAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR4');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR5').length > 0) {
+             $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR5').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR5').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR5').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=5) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val() + '" ' + "for your REAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR5');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR6').length > 0) {
+             $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR6').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR6').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR6').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=6) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR' + k).val() + '" ' + "for your REAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rSetGroupId + 'X' + rSetQuestionId + 'PCR6');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+
+         // Begin Ideal
+
+         var rGroupId = idealGroupId1;
+         var rQuestionId = idealQuestionId1;
+
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').length == 0) {
+             rGroupId = idealGroupId2;
+             rQuestionId = idealQuestionId2;
+         }
+
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').length > 0) {
+             $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=1) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val() + '" ' + "for your IDEAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI1');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI2').length > 0) {
+             $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI2').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI2').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI2').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=2) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val() + '" ' + "for your IDEAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI2');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI3').length > 0) {
+             $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI3').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI3').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI3').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=3) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val() + '" ' + "for your IDEAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI3');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI4').length > 0) {
+             $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI4').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI3').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI4').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=4) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val() + '" ' + "for your IDEAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI4');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI5').length > 0) {
+             $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI5').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI5').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI5').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=5) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val() + '" ' + "for your IDEAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI5');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+         if ($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI6').length > 0) {
+             $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI6').change(function() {
+                 if ( $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCR6').val() != '' )
+                 {
+                     var changedVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI6').val().toUpperCase());
+                     for (var k=1; k<=6; k++) {
+                         if (k!=6) {
+                             var existingVal = trim($('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val().toUpperCase());
+                             if ( changedVal == existingVal )
+                             {
+                                 alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI' + k).val() + '" ' + "for your IDEAL SELF.  Please enter a different characteristic." );
+                                 setTimeout( "clearText( '#answer' + surveyId + 'X' + rGroupId + 'X' + rQuestionId + 'PCI6');", 200 );
+                             }
+                         }
+                     }
+                 }
+             });
+         }
+
+
+       // End Ideal
+
+
+       // Begin Ought
+              var oGroupId = oughtGroupId1;
+              var oQuestionId = oughtQuestionId1;
+
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').length == 0) {
+                  oGroupId = oughtGroupId2;
+                  oQuestionId = oughtQuestionId2;
+              }
+
+
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').length > 0) {
+                  $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').change(function() {
+                      if ( $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').val() != '' )
+                      {
+                          var changedVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1').val().toUpperCase());
+                          for (var k=1; k<=6; k++) {
+                              if (k!=1) {
+                                  var existingVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val().toUpperCase());
+                                  if ( changedVal == existingVal )
+                                  {
+                                      alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val() + '" ' + "for your OUGHT SELF.  Please enter a different characteristic." );
+                                      setTimeout( "clearText( '#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO1');", 200 );
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO2').length > 0) {
+                  $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO2').change(function() {
+                      if ( $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO2').val() != '' )
+                      {
+                          var changedVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO2').val().toUpperCase());
+                          for (var k=1; k<=6; k++) {
+                              if (k!=2) {
+                                  var existingVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val().toUpperCase());
+                                  if ( changedVal == existingVal )
+                                  {
+                                      alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val() + '" ' + "for your OUGHT SELF.  Please enter a different characteristic." );
+                                      setTimeout( "clearText( '#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO2');", 200 );
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO3').length > 0) {
+                  $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO3').change(function() {
+                      if ( $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO3').val() != '' )
+                      {
+                          var changedVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO3').val().toUpperCase());
+                          for (var k=1; k<=6; k++) {
+                              if (k!=3) {
+                                  var existingVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val().toUpperCase());
+                                  if ( changedVal == existingVal )
+                                  {
+                                      alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val() + '" ' + "for your OUGHT SELF.  Please enter a different characteristic." );
+                                      setTimeout( "clearText( '#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO3');", 200 );
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO4').length > 0) {
+                  $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO4').change(function() {
+                      if ( $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO3').val() != '' )
+                      {
+                          var changedVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO4').val().toUpperCase());
+                          for (var k=1; k<=6; k++) {
+                              if (k!=4) {
+                                  var existingVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val().toUpperCase());
+                                  if ( changedVal == existingVal )
+                                  {
+                                      alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val() + '" ' + "for your OUGHT SELF.  Please enter a different characteristic." );
+                                      setTimeout( "clearText( '#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO4');", 200 );
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO5').length > 0) {
+                  $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO5').change(function() {
+                      if ( $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO5').val() != '' )
+                      {
+                          var changedVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO5').val().toUpperCase());
+                          for (var k=1; k<=6; k++) {
+                              if (k!=5) {
+                                  var existingVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val().toUpperCase());
+                                  if ( changedVal == existingVal )
+                                  {
+                                      alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val() + '" ' + "for your OUGHT SELF.  Please enter a different characteristic." );
+                                      setTimeout( "clearText( '#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO5');", 200 );
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+              if ($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO6').length > 0) {
+                  $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO6').change(function() {
+                      if ( $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCR6').val() != '' )
+                      {
+                          var changedVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO6').val().toUpperCase());
+                          for (var k=1; k<=6; k++) {
+                              if (k!=6) {
+                                  var existingVal = trim($('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val().toUpperCase());
+                                  if ( changedVal == existingVal )
+                                  {
+                                      alert( matchErrorString + '"' + $('#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO' + k).val() + '" ' + "for your OUGHT SELF.  Please enter a different characteristic." );
+                                      setTimeout( "clearText( '#answer' + surveyId + 'X' + oGroupId + 'X' + oQuestionId + 'PCO6');", 200 );
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+        // End Ought
+    </script>
+	<div class="survey-question-space"></div>
+</div>
