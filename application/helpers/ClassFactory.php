@@ -20,8 +20,11 @@
 
 		public static function createClass($baseClass, $className)
 		{
+			// Change made again because W&M disallows
 			$code = "class $className extends $baseClass {}";
-			return eval($code);
+			$eval = create_function("","$code");
+			return $eval();
+			//return eval($code);
 		}
 
 		public static function registerClass($prefix, $baseClass)
