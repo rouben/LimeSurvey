@@ -66,40 +66,43 @@ class SurveyAdmin extends Survey_Common_Action
 
     public function regenquestioncodes($iSurveyID, $sSubAction )
     {
-        $clang = $this->getController()->lang;
-        if (!Permission::model()->hasSurveyPermission($iSurveyID, 'surveycontent', 'update'))
+        if (Permission::model()->hasSurveyPermission($iSurveyID, 'surveycontent', 'update'))
         {
-            Yii::app()->setFlashMessage($clang->gT("You do not have sufficient rights to access this page."),'error');
-            $this->getController()->redirect(array('admin/survey','sa'=>'view','surveyid'=>$iSurveyID));
-        }
-        $oSurvey=Survey::model()->findByPk($iSurveyID);
-        if ($oSurvey->active=='Y')
-        {
-            Yii::app()->setFlashMessage($clang->gT("You can't update question code for an active survey."),'error');
-            $this->getController()->redirect(array('admin/survey','sa'=>'view','surveyid'=>$iSurveyID));
-        }
-        //Automatically renumbers the "question codes" so that they follow
-        //a methodical numbering method
-        $iQuestionNumber=1;
-        $iGroupNumber=0;
-        $iGroupSequence=0;
-        $oQuestions=Question::model()->with('groups')->findAll(array('select'=>'t.qid,t.gid','condition'=>"t.sid=:sid and t.language=:language and parent_qid=0",'order'=>'groups.group_order, question_order','params'=>array(':sid'=>$iSurveyID,':language'=>$oSurvey->language)));
-        foreach($oQuestions as $oQuestion)
-        {
-            if ($sSubAction == 'bygroup' && $iGroupNumber != $oQuestion->gid)
-            { //If we're doing this by group, restart the numbering when the group number changes
-                $iQuestionNumber=1;
-                $iGroupNumber = $oQuestion->gid;
-                $iGroupSequence++;
-            }
-            $sNewTitle=(($sSubAction == 'bygroup') ? ('G' . $iGroupSequence ) : '')."Q".str_pad($iQuestionNumber, 5, "0", STR_PAD_LEFT);
-            Question::model()->updateAll(array('title'=>$sNewTitle),'qid=:qid',array(':qid'=>$oQuestion->qid));
-            $iQuestionNumber++;
-            $iGroupNumber=$oQuestion->gid;
-        }
+            $clang = $this->getController()->lang;
 
-        Yii::app()->setFlashMessage($clang->gT("Question codes were successfully regenerated."));
-        LimeExpressionManager::SetDirtyFlag(); // so refreshes syntax highlighting
+            //Automatically renumbers the "question codes" so that they follow
+            //a methodical numbering method
+            $iQuestionNumber=1;
+            $iGroupNumber=0;
+            $iSequence=0;
+            $sQuery="SELECT a.qid, a.gid\n"
+            ."FROM {{questions}} as a, {{groups}} g "
+            ."WHERE a.gid=g.gid AND a.sid={$iSurveyID} AND a.parent_qid=0 "
+            ."GROUP BY a.gid, a.qid, g.group_order, question_order "
+            ."ORDER BY g.group_order, question_order";
+            $arResult=dbExecuteAssoc($sQuery) or safe_die ("Error: ".$connect->ErrorMsg());  // Checked
+            $grows = array(); //Create an empty array in case FetchRow does not return any rows
+            foreach ($arResult->readAll() as $grow) {$grows[] = $grow;} // Get table output into array
+            foreach($grows as $grow)
+            {
+                //Go through all the questions
+                if ($sSubAction == 'bygroup' && (!isset($iGroupNumber) || $iGroupNumber != $grow['gid']))
+                { //If we're doing this by group, restart the numbering when the group number changes
+                    $iQuestionNumber=1;
+                    $iGroupNumber = $grow['gid'];
+                    $iSequence++;
+                }
+                $usql="UPDATE {{questions}} "
+                ."SET title='".(($sSubAction == 'bygroup') ? ('G' . $iSequence ) : '')."Q".str_pad($iQuestionNumber, 5, "0", STR_PAD_LEFT)."'\n"
+                ."WHERE qid=".$grow['qid'];
+                //$databaseoutput .= "[$sql]";
+                $uresult=dbExecuteAssoc($usql) or safe_die("Error: ".$connect->ErrorMsg());  // Checked
+                $iQuestionNumber++;
+                $iGroupNumber=$grow['gid'];
+            }
+            $_SESSION['flashmessage'] = $clang->gT("Question codes were successfully regenerated.");
+            LimeExpressionManager::SetDirtyFlag(); // so refreshes syntax highlighting
+        }
         $this->getController()->redirect(array('admin/survey/sa/view/surveyid/' . $iSurveyID));
     }
 
@@ -574,14 +577,15 @@ class SurveyAdmin extends Survey_Common_Action
         $clang = $this->getController()->lang;
         $dateformatdetails = getDateFormatData(Yii::app()->session['dateformat']);
 
-        $oSurvey = new Survey;
+        $surveys = Survey::model();
+        //!!! Is this even possible to execute?
         if (!Permission::model()->hasGlobalPermission('superadmin','read'))
-            $oSurvey->permission(Yii::app()->user->getId());
+            $surveys->permission(Yii::app()->user->getId());
 
-        $aSurveys = $oSurvey->with(array('languagesettings'=>array('condition'=>'surveyls_language=language'), 'owner'))->findAll();
+        $surveys = $surveys->with(array('languagesettings'=>array('condition'=>'surveyls_language=language'), 'owner'))->findAll();
         $aSurveyEntries = new stdClass();
         $aSurveyEntries->page = 1;
-        foreach ($aSurveys as $rows)
+        foreach ($surveys as $rows)
         {
             if (!isset($rows->owner->attributes)) $aOwner=array('users_name'=>$clang->gT('(None)')); else $aOwner=$rows->owner->attributes;
             $rows = array_merge($rows->attributes, $rows->defaultlanguage->attributes, $aOwner);
@@ -954,7 +958,10 @@ class SurveyAdmin extends Survey_Common_Action
             }
 
             //            if (isset($aImportResults['error']) && $aImportResults['error']) safeDie($aImportResults['error']);
-
+            if (isset($aImportResults['Error'])) {
+                $aData['bFailed'] = TRUE;
+                $aData['aImportResults'] = $aImportResults['Error'];
+            }
             if (!$aData['bFailed'])
             {
                 $aData['action'] = $action;

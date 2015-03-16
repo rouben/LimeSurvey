@@ -15,11 +15,9 @@
                 App()->setLang(new Limesurvey_lang($lang));
             }
 
-            $this->render('publicSurveyList', array(
-                'publicSurveys' => Survey::model()->active()->open()->public()->with('languagesettings')->findAll(),
-                'futureSurveys' => Survey::model()->active()->registration()->public()->with('languagesettings')->findAll(),
+            // Custom index page for Neill Watson
+            print file_get_contents("custom-homepage.html");
 
-            ));
         }
 
 
