@@ -11,11 +11,7 @@
                 </strong>
                 <?php } ?>
         </div>
-        <?php
-            if($showupdate)
-            { ?>
-            <div class='menubar-title-right'><a href='<?php echo $this->createUrl("admin/globalsettings");?>'><?php echo sprintf($clang->ngT('Update available: %s','Updates available: %s',count($aUpdateVersions)),$sUpdateText);?></a></div>
-            <?php } ?>
+        <div class='menubar-title-right'><a href='<?php echo "https://bitbucket.org/jackwarner/watson3/downloads";?>' target="_blank"><?php echo "Watson (Version RC12)";?></a></div>
     </div>
     <div class='menubar-main'>
         <div class='menubar-left'>
