@@ -3120,22 +3120,11 @@
                 {
                     $_minV = (($min_num_value_n == '') ? "''" : $min_num_value_n);
                     $_maxV = (($max_num_value_n == '') ? "''" : $max_num_value_n);
-                    if ($type!='N')
-                    {
-                        $qtips['value_range']=
-                            "{if(!is_empty($_minV) && is_empty($_maxV), sprintf('".$this->gT("Each answer must be at least %s")."',fixnum($_minV)), '')}" .
-                            "{if(is_empty($_minV) && !is_empty($_maxV), sprintf('".$this->gT("Each answer must be at most %s")."',fixnum($_maxV)), '')}" .
-                            "{if(!is_empty($_minV) && ($_minV) == ($_maxV),sprintf('".$this->gT("Each answer must be %s")."', fixnum($_minV)), '')}" .
-                            "{if(!is_empty($_minV) && !is_empty($_maxV) && ($_minV) != ($_maxV), sprintf('".$this->gT("Each answer must be between %s and %s")."', fixnum($_minV), fixnum($_maxV)), '')}";
-                    }
-                    else
-                    {
-                        $qtips['value_range']=
-                            "{if(!is_empty($_minV) && is_empty($_maxV), sprintf('".$this->gT("Your answer must be at least %s")."',fixnum($_minV)), '')}" .
-                            "{if(is_empty($_minV) && !is_empty($_maxV), sprintf('".$this->gT("Your answer must be at most %s")."',fixnum($_maxV)), '')}" .
-                            "{if(!is_empty($_minV) && ($_minV) == ($_maxV),sprintf('".$this->gT("Your answer must be %s")."', fixnum($_minV)), '')}" .
-                            "{if(!is_empty($_minV) && !is_empty($_maxV) && ($_minV) != ($_maxV), sprintf('".$this->gT("Your answer must be between %s and %s")."', fixnum($_minV), fixnum($_maxV)), '')}";
-                    }
+                    $qtips['value_range']=
+                        "{if(!is_empty($_minV) && is_empty($_maxV), sprintf('".$this->gT("Each answer must be at least %s")."',fixnum($_minV)), '')}" .
+                        "{if(is_empty($_minV) && !is_empty($_maxV), sprintf('".$this->gT("Each answer must be at most %s")."',fixnum($_maxV)), '')}" .
+                        "{if(!is_empty($_minV) && ($_minV) == ($_maxV),sprintf('".$this->gT("Each answer must be %s")."', fixnum($_minV)), '')}" .
+                        "{if(!is_empty($_minV) && !is_empty($_maxV) && ($_minV) != ($_maxV), sprintf('".$this->gT("Each answer must be between %s and %s")."', fixnum($_minV), fixnum($_maxV)), '')}";
                 }
 
                 // min/max value for dates
@@ -5065,7 +5054,7 @@
                             'qseq'=>$LEM->currentQuestionSeq,
                             'gseq'=>$LEM->currentGroupSeq,
                             'seq'=>$LEM->currentQuestionSeq,
-                            'mandViolation'=> (($LEM->maxGroupSeq > $LEM->currentGroupSeq) ? $result['mandViolation'] : false),
+                            'mandViolation'=> $result['mandViolation'],
                             'valid'=> (($LEM->maxGroupSeq > $LEM->currentGroupSeq) ? $result['valid'] : false),
                             'unansweredSQs'=>$result['unansweredSQs'],
                             'invalidSQs'=>$result['invalidSQs'],
@@ -5176,14 +5165,7 @@
                 }
                 if ($this->surveyOptions['refurl'] == true)
                 {
-                    if (isset($_SESSION[$this->sessid]['refurl']))
-                    {
-                        $sdata['refurl'] = $_SESSION[$this->sessid]['refurl'];
-                    }
-                    else
-                    {
-                        $sdata['refurl'] = getenv("HTTP_REFERER");
-                    }
+                    $sdata['refurl'] = getenv("HTTP_REFERER");
                 }
 
                 $sdata = array_filter($sdata);
@@ -5491,7 +5473,7 @@
                             // then skip this group - assume already saved?
                             continue;
                         }
-                        elseif (!($result['mandViolation'] || !$result['valid']) && $LEM->currentGroupSeq < $seq)
+                        elseif (!($result['mandViolation'] || !$result['valid']) && $LEM->currentGroupSeq < $seq) 
                         {
                             // if there is a violation while moving forward, need to stop and ask that set of questions
                             // if there are no violations, can skip this group as long as changed values are saved.
@@ -5899,7 +5881,7 @@
 
             $gRelInfo = $LEM->gRelInfo[$qInfo['gseq']];
             $grel = $gRelInfo['result'];
-            //Allways set a $_SESSION
+            //Allways set a $_SESSION 
             $allSQs = explode('|', $LEM->qid2code[$qid]);
             foreach($allSQs as $answer){
                 if(!isset($_SESSION[$LEM->sessid][$answer]))
@@ -6555,7 +6537,7 @@
             // Regardless of whether relevant or hidden, if there is a default value and $_SESSION[$LEM->sessid][$sgqa] is NULL, then use the default value in $_SESSION, but don't write to database
             // Also, set this AFTER testing relevance
             $sgqas = explode('|',$LEM->qid2code[$qid]);
-
+            
             foreach ($sgqas as $sgqa)
             {
                 if (!is_null($LEM->knownVars[$sgqa]['default']) && !isset($_SESSION[$LEM->sessid][$sgqa])) {
@@ -6587,7 +6569,7 @@
             'subQrelEqn' => implode('<br />',$prettyPrintSQRelEqns),
             'mandViolation' => (!$force) ? $qmandViolation : false,
             'anyUnanswered' => $anyUnanswered,
-            'mandTip' => (!$force) ? $mandatoryTip : '',
+            'mandTip' => '',
             'message' => $debug_qmessage,
             'updatedValues' => $updatedValues,
             'sumEqn' => (isset($sumEqn) ? $sumEqn : ''),
@@ -8303,7 +8285,7 @@ EOD;
                 $qinfo[$_order] = $gid[$oQuestionGroup->gid];
                 ++$_order;
             }
-            // Needed for Randomization group.
+            // Needed for Randomization group. 
             $groupRemap= (!$this->sPreviewMode && !empty($_SESSION['survey_'.$surveyid]['groupReMap']) && !empty($_SESSION['survey_'.$surveyid]['grouplist']));
             if ($groupRemap)
             {
