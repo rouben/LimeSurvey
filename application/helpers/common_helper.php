@@ -135,12 +135,8 @@ function getSurveyList($returnarray=false, $surveyid=false)
 
     if(is_null($cached)) {
         $args = array('order'=>'surveyls_title');
-        if (!Permission::model()->hasGlobalPermission('superadmin','read'))
-        {
-            $surveyidresult = Survey::model()->permission(Yii::app()->user->getId())->with('defaultlanguage')->findAll($args);
-        } else {
-            $surveyidresult = Survey::model()->with('defaultlanguage')->findAll($args);
-        }
+        $surveyidresult = Survey::model()->permission(Yii::app()->user->getId())->with('defaultlanguage')->findAll($args);
+
 
         $surveynames = array();
         foreach ($surveyidresult as $result)
@@ -5636,7 +5632,7 @@ function isNumericInt($mStr)
 * @param array $aArray
 * @return string String showing array content
 */
-function short_implode($sDelimeter, $aArray)
+function short_implode($sDelimeter, $sHyphen, $aArray)
 {
     if (sizeof($aArray) < Yii::app()->getConfig('minlengthshortimplode'))
     {
@@ -5656,7 +5652,14 @@ function short_implode($sDelimeter, $aArray)
             }
             else
             {
-                $sResult = $sResult.', '.$aArray[$iIndexA];
+                if (strlen($sResult) > Yii::app()->getConfig('maxstringlengthshortimplode') - strlen($sDelimeter) - 3)
+                {
+                    return $sResult.$sDelimeter.'...';
+                }
+                else
+                {
+                    $sResult = $sResult.$sDelimeter.$aArray[$iIndexA];
+                }
             }
             $iIndexB = $iIndexA+1;
             if ($iIndexB < sizeof($aArray))
@@ -5667,7 +5670,7 @@ function short_implode($sDelimeter, $aArray)
                 }
                 if ($iIndexA < $iIndexB - 1)
                 {
-                    $sResult = $sResult.'-'.$aArray[$iIndexB-1];
+                    $sResult = $sResult.$sHyphen.$aArray[$iIndexB-1];
                 }
             }
             $iIndexA = $iIndexB;
@@ -7582,7 +7585,7 @@ function array_diff_assoc_recursive($array1, $array2) {
         $aTypes = array('s' => 'string', 'a' => 'array', 'b' => 'bool', 'i' => 'int', 'd' => 'float', 'N;' => 'NULL');
 
         $aParts = explode(':', $sSerial, 4);
-        return isset($aTypes[$aParts[0]]) ? $aTypes[$aParts[0]] : trim($aParts[2], '"');
+        return isset($aTypes[$aParts[0]]) ? $aTypes[$aParts[0]] : ( isset($aParts[2]) ? trim($aParts[2], '"') : null);
     }
 
 // Closing PHP tag intentionally omitted - yes, it is okay

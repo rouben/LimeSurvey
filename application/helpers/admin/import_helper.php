@@ -4723,7 +4723,7 @@ function CSVImportResponses($sFullFilePath,$iSurveyId,$aOptions=array())
     // Do a model function for this can be a good idea (see activate_helper/activateSurvey)
     if (Yii::app()->db->driverName=='pgsql')
     {
-        $sSequenceName= Yii::app()->db->getSchema()->getTable("{{survey_{$iSurveyID}}}")->sequenceName;
+        $sSequenceName= Yii::app()->db->getSchema()->getTable("{{survey_{$iSurveyId}}}")->sequenceName;
         $iActualSerial=Yii::app()->db->createCommand("SELECT last_value FROM  {$sSequenceName}")->queryScalar();
         if($iActualSerial<$iMaxId)
         {
@@ -4955,7 +4955,7 @@ function TSVImportSurvey($sFullFilePath)
     $surveyinfo['active']='N';
    // unset($surveyinfo['datecreated']);
     $iNewSID = Survey::model()->insertNewSurvey($surveyinfo) ; //or safeDie($clang->gT("Error").": Failed to insert survey<br />");
-    if ($iNewSID==false)
+    if (!$iNewSID)
     {
         $results['error'] = Survey::model()->getErrors();
         $results['bFailed'] = true;
@@ -5074,7 +5074,7 @@ function TSVImportSurvey($sFullFilePath)
                 $insertdata['help'] = (isset($row['help']) ? $row['help'] : '');
                 $insertdata['language'] = (isset($row['language']) ? $row['language'] : $baselang);
                 $insertdata['mandatory'] = (isset($row['mandatory']) ? $row['mandatory'] : '');
-                $insertdata['other'] = (isset($row['other']) ? $row['other'] : 'N');
+                $lastother = $insertdata['other'] = (isset($row['other']) ? $row['other'] : 'N'); // Keep trace of other settings for sub question
                 $insertdata['same_default'] = (isset($row['same_default']) ? $row['same_default'] : 0);
                 $insertdata['parent_qid'] = 0;
 
@@ -5167,17 +5167,17 @@ function TSVImportSurvey($sFullFilePath)
                     $results['defaultvalues']++;
                 }
                 break;
-
             case 'SQ':
                 $sqname = (isset($row['name']) ? $row['name'] : 'SQ' . $sqseq);
                 if ($qtype == 'O' || $qtype == '|')
                 {
                     ;   // these are fake rows to show naming of comment and filecount fields
                 }
-                elseif ($sqname == 'other' && ($qtype == '!' || $qtype == 'L'))
+                elseif ($sqname == 'other' && $lastother=="Y") // If last question have other to Y : it's not a real SQ row
+                {
+                    if($qtype=="!" || $qtype=="L")
                     {
-                        // only want to set default value for 'other' in these cases - not a real SQ row
-                        // TODO - this isn't working
+                        // only used to set default value for 'other' in these cases
                         if (isset($row['default']))
                         {
                             $insertdata=array();
@@ -5186,12 +5186,14 @@ function TSVImportSurvey($sFullFilePath)
                             $insertdata['language'] = (isset($row['language']) ? $row['language'] : $baselang);
                             $insertdata['defaultvalue'] = $row['default'];
                             $result = DefaultValue::model()->insertRecords($insertdata);
-                            if(!$result){
+                            if(!$result)
+                            {
                                 $results['importwarnings'][] = $clang->gT("Warning")." : ".$clang->gT("Failed to insert default value").". ".$clang->gT("Text file row number ").$rownumber;
                                 break;
                             }
                             $results['defaultvalues']++;
                         }
+                    }
                 }
                 else
                 {

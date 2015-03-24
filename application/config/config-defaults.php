@@ -347,6 +347,7 @@ $config['alternatepdffontfile']=array(
     'el'=>'dejavusans',
     'he'=>'freesans',
     'hi'=>'dejavusans',
+    'hr'=>'dejavusans',
     'hu'=>'dejavusans',
     'ja'=>'cid0jp',
     'ko'=>'cid0kr',
@@ -384,23 +385,7 @@ $config['pdfheaderstring'] = '';          // Header string (under title). If thi
 $config['quexmlshowprintablehelp'] = false;
 
 $config['minlengthshortimplode'] = 20; // Min length required to use short_implode instead of standard implode
-
-// CAS Settings
-/**
-* Please note that CAS functionality is very basic and you have to modify the client to your needs.
-* At least the hard work is done.
-* The Client is deployed in Limesurvey and a file login_check_cas.php does what login_check.php does in normal mode.
-*
-* $casEnabled determines if CAS should be used or not for Authentication.
-* $casAuthServer the servername of the cas Auth Server. Without http://
-* $casAuthPort CAS Server listening Port
-* $casAuthUri relative uri from $casAuthServer to cas workingdirectory
-*/
-$config['casEnabled'] = false;
-$config['casAuthServer'] = 'localhost';
-$config['casAuthPort'] = 8443;
-$config['casAuthUri'] = '/cas-server/';
-
+$config['maxstringlengthshortimplode'] = 100; // short_implode: Max length of returned string
 
 /**
 *  Statistics chart settings

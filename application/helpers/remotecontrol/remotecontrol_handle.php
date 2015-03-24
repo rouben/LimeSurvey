@@ -1112,11 +1112,12 @@ class remotecontrol_handle
                     //We do not allow groups with dependencies to change order - that would lead to broken dependencies
 
                     if((isset($has_dependencies) || isset($depented_on))  && $sFieldName == 'group_order')
-                        $aFailed[$sFieldName]='Group with dependencies - Order cannot be changed';
-                    else
                     {
-                        $oGroup->setAttribute($sFieldName,$sValue);
+                        $aResults[$sFieldName]='Group with dependencies - Order cannot be changed';
+                        continue;
                     }
+                    $oGroup->setAttribute($sFieldName,$sValue);
+
                     try
                     {
                         // save the change to database - one by one to allow for validation to work
@@ -1495,17 +1496,18 @@ class remotecontrol_handle
                     $is_criteria_question=getQuestDepsForConditions($oQuestion->sid,$oQuestion->gid,"all",$iQuestionID,"by-targqid");
                     //We do not allow questions with dependencies in the same group to change order - that would lead to broken dependencies
 
-                    if((isset($dependencies) || isset($is_criteria_question))  && $sFieldName == 'question_order')
-                        $aFailed[$sFieldName]='Questions with dependencies - Order cannot be changed';
-                    else
+                    if ((isset($dependencies) || isset($is_criteria_question)) && $sFieldName == 'question_order')
                     {
-                        $oQuestion->setAttribute($sFieldName,$sValue);
+                        $aResult[$sFieldName] = 'Questions with dependencies - Order cannot be changed';
+                        continue;
                     }
+                    
+                    $oQuestion->setAttribute($sFieldName, $sValue);
 
                     try
                     {
                         $bSaveResult=$oQuestion->save(); // save the change to database
-                        Question::model()->updateQuestionOrder($oQuestion->gid, $oQuestion->sid);
+                        Question::model()->updateQuestionOrder($oQuestion->gid, $oQuestion->language);
                         $aResult[$sFieldName]=$bSaveResult;
                         //unset fields that failed
                         if (!$bSaveResult)

@@ -576,12 +576,8 @@ class SurveyAdmin extends Survey_Common_Action
         $this->getController()->loadHelper('surveytranslator');
         $clang = $this->getController()->lang;
         $dateformatdetails = getDateFormatData(Yii::app()->session['dateformat']);
-
-        $surveys = Survey::model();
-        //!!! Is this even possible to execute?
-        if (!Permission::model()->hasGlobalPermission('superadmin','read'))
-            $surveys->permission(Yii::app()->user->getId());
-
+        $oSurvey = new Survey;
+        $oSurvey->permission(Yii::app()->user->getId());
         $surveys = $surveys->with(array('languagesettings'=>array('condition'=>'surveyls_language=language'), 'owner'))->findAll();
         $aSurveyEntries = new stdClass();
         $aSurveyEntries->page = 1;
@@ -929,7 +925,7 @@ class SurveyAdmin extends Survey_Common_Action
             if ($action == 'importsurvey' && !$aData['bFailed'])
             {
                 $aImportResults=importSurveyFile($sFullFilepath,(isset($_POST['translinksfields'])));
-                if (is_null($aImportResults) || isset($aImportResults['error']))
+                if (is_null($aImportResults) || !empty($aImportResults['error']) )
                 {
                     $aData['sErrorMessage']=$aImportResults['error'];
                     $aData['bFailed'] = true;
@@ -955,12 +951,6 @@ class SurveyAdmin extends Survey_Common_Action
             if ($action == 'importsurvey' && isset($sFullFilepath))
             {
                 unlink($sFullFilepath);
-            }
-
-            //            if (isset($aImportResults['error']) && $aImportResults['error']) safeDie($aImportResults['error']);
-            if (isset($aImportResults['Error'])) {
-                $aData['bFailed'] = TRUE;
-                $aData['aImportResults'] = $aImportResults['Error'];
             }
             if (!$aData['bFailed'])
             {
@@ -1371,12 +1361,12 @@ class SurveyAdmin extends Survey_Common_Action
     function getUrlParamsJSON($iSurveyID)
     {
         $iSurveyID = (int) $iSurveyID;
-        Yii::app()->loadHelper('database');
-        $oResult = dbExecuteAssoc("select '' as act, up.*,q.title, sq.title as sqtitle, q.question, sq.question as sqquestion from {{survey_url_parameters}} up
+        $sBaseLanguage = Survey::model()->findByPk($iSurveyID)->language;
+        $sQuery = "select '' as act, up.*,q.title, sq.title as sqtitle, q.question, sq.question as sqquestion from {{survey_url_parameters}} up
         left join {{questions}} q on q.qid=up.targetqid
         left join {{questions}} sq on sq.qid=up.targetsqid
-        where up.sid={$iSurveyID}");
-        $oResult= $oResult->readAll();
+        where up.sid={$iSurveyID} and q.language='{$sBaseLanguage}' and (sq.language='{$sBaseLanguage}' or sq.language is null)";
+        $oResult = Yii::app()->db->createCommand($sQuery)->queryAll();
         $i = 0;
         $clang = $this->getController()->lang;
         $aData = new stdClass();
