@@ -5468,7 +5468,7 @@ function enforceSSLMode()
 *
 * @param int $iSurveyId - Survey identification number
 * @param int $quotaid - quota id for which you want to compute the completed field
-* @return mixed - Integer of matching entries in the result DB or 'N/A'
+* @return string - Integer of matching entries in the result DB or 'N/A'
 */
 function getQuotaCompletedCount($iSurveyId, $quotaid)
 {
@@ -5491,29 +5491,25 @@ function getQuotaCompletedCount($iSurveyId, $quotaid)
             if(in_array($member['fieldname'],$aColumnName))
                 $fields_list[$member['fieldname']][] = $member['value'];
             else
-                return $result;// We return N/A even for activated survey
+                return $result;// We return N/A even for activated survey : $member['fieldname'] don't exist anymore (deleted question for example)
         }
 
         $criteria = new CDbCriteria;
         $criteria->condition="submitdate IS NOT NULL";
-        $aParams=array();
         foreach ($fields_list as $fieldname=>$aValue)
         {
             if(count($aValue)==1)
             {
-                // Quote columnName : starting with number broke mssql
-                $criteria->addCondition(Yii::app()->db->quoteColumnName($fieldname)." = :field{$fieldname}");
-                $aParams[":field{$fieldname}"]=$aValue[0];
+                $criteria->compare(Yii::app()->db->quoteColumnName($fieldname),$aValue[0]);// NO need params
             }
             else
             {
                 $criteria->addInCondition(Yii::app()->db->quoteColumnName($fieldname),$aValue); // NO need params : addInCondition bind automatically
             }
-            // We can use directly addInCondition, but don't know what is speediest.
         }
-        if(!empty($aParams))
-            $criteria->params=array_merge($criteria->params,$aParams);
-        $result = SurveyDynamic::model($iSurveyId)->count($criteria);
+        // Ensure to return a string, Yii count return a string (see http://www.yiiframework.com/doc/api/1.1/CActiveRecord#count-detail)
+        // But seems under certain condition, count return integer  see http://bugs.limesurvey.org/view.php?id=9587#c31917
+        $result = strval(SurveyDynamic::model($iSurveyId)->count($criteria));
     }
 
     return $result;

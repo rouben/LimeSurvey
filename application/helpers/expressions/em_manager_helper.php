@@ -769,10 +769,12 @@
             foreach ($aSurveyIDs as $surveyId )
             {
                 $releqns = self::ConvertConditionsToRelevance($surveyId,$qid);
-                foreach ($releqns as $key=>$value)
-                {
-                    $sQuery = "UPDATE {{questions}} SET relevance=".Yii::app()->db->quoteValue($value)." WHERE qid=".$key;
-                    Yii::app()->db->createCommand($sQuery)->execute();
+                if ( !empty( $releqns) ) {
+                    foreach ($releqns as $key=>$value)
+                    {
+                        $sQuery = "UPDATE {{questions}} SET relevance=".Yii::app()->db->quoteValue($value)." WHERE qid=".$key;
+                        Yii::app()->db->createCommand($sQuery)->execute();
+                    }
                 }
             }
 
@@ -1516,7 +1518,7 @@
                                     }
 
                                     $sq_name = ($this->sgqaNaming)?$sq['rowdivid'].".NAOK":$sq['varName'].".NAOK";
-                                    $sq_name = '(is_empty(' . $sq_name . ') || ('. $sq_name . ' >= ' . $date_min . '))';// Leave mandatory to mandatory attribute
+                                    $sq_name = '(is_empty(' . $sq_name . ') || ('. $sq_name . ' >= date("Y-m-d H:i", strtotime(' . $date_min . ')) ))';// Leave mandatory to mandatory attribute
                                     $subqValidSelector = '';
                                     break;
                                 default:
@@ -1585,7 +1587,7 @@
                                     }
 
                                     $sq_name = ($this->sgqaNaming)?$sq['rowdivid'].".NAOK":$sq['varName'].".NAOK";
-                                    $sq_name = '(is_empty(' . $sq_name . ') || is_empty(' . $date_max . ') || ('. $sq_name . ' <= ' . $date_max . '))';// Leave mandatory to mandatory attribute
+                                    $sq_name = '(is_empty(' . $sq_name . ') || is_empty(' . $date_max . ') || ('. $sq_name . ' <= date("Y-m-d H:i", strtotime(' . $date_max . ')) ))';// Leave mandatory to mandatory attribute
                                     $subqValidSelector = '';
                                     break;
                                 default:
