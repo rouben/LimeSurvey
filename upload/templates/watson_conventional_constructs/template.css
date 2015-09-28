@@ -1646,3 +1646,11 @@ span.hide-tip div.error {
 .abstract-answers {
     padding-bottom: 20px;
 }
+
+
+
+/* Fix array type repeating header issue */
+.dontread.repeat.headings {
+    display: none;
+}
+
