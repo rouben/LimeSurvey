@@ -134,7 +134,7 @@
                     { ?>
                     <a href='<?php echo $this->createUrl("admin/dataentry/sa/iteratesurvey/surveyid/$surveyid"); ?>'>
                         <img src='<?php echo $sImageURL; ?>iterate.png' title='' alt='<?php eT("Iterate survey"); ?>' /></a>
-                    <?php } 
+                    <?php }
                     else
                     {
                       ?>  <img src='<?php echo $sImageURL; ?>iterate_disabled.png' title='' alt='<?php eT("Iterate survey"); ?>' /> <?php
