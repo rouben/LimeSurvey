@@ -890,6 +890,30 @@ function XMLImportSurvey($sFullFilePath,$sXMLdata=NULL,$sNewSurveyName=NULL,$iDe
             $insertdata['showxquestions']=$insertdata['showXquestions'];
             unset($insertdata['showXquestions']);
         }
+
+        // Special code to set javascript in
+        Yii::app()->loadHelper('admin/template');
+        $newname= "watson_".time();
+        $newdirname = Yii::app()->getConfig('usertemplaterootdir') . "/" . $newname;
+        $copydirname = getTemplatePath("watson_personal_constructs_copy_me");
+
+        $oFileHelper=new CFileHelper;
+
+        $mkdirresult = mkdir_p($newdirname);
+
+        if ($mkdirresult == 1) {
+            $oFileHelper->copyDirectory($copydirname,$newdirname);
+            $templatename = $newname;
+            //$this->index("startpage.pstpl", "welcome", $templatename);
+        }
+        elseif ($mkdirresult == 2)
+            $results['Error'] = sprintf(gT("Directory with the name `%s` already exists - choose another name", "js"), $newname);
+        else
+            $results['Error'] = sprintf(gT("Unable to create directory `%s`.", "js"), $newname) . " " . gT("Please check the directory permissions.", "js");
+        ;
+        $insertdata['template'] = $newname;
+        // End special copy code (taken from templates.php templatecopy() method
+
         if (isset($insertdata['googleAnalyticsStyle']))
         {
             $insertdata['googleanalyticsstyle']=$insertdata['googleAnalyticsStyle'];
