@@ -23,6 +23,7 @@
 !/tmp/upload/readme.txt
 /tmp/template*
 /tmp/assets
+/tmp/*.lss
 
 # Packages #
 ############
