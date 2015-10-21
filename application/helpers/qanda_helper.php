@@ -4747,6 +4747,7 @@ function do_array($ia)
                 if (isset($_SESSION['survey_' . Yii::app()->getConfig('surveyID')][$myfname])) {
                     $answer .= $_SESSION['survey_' . Yii::app()->getConfig('surveyID')][$myfname];
                 }
+                $answer .= "\" />\n\t</th>\n";
             }
             $thiskey=0;
             foreach ($labelcode as $ld)
@@ -4833,12 +4834,12 @@ function do_array($ia)
         foreach ($labelans as $c)
         {
             $odd_even = alternation($odd_even);
-            $answer_cols .= "<col class=\"$odd_even\" width=\"$cellwidth%\" />\n";
+            $answer_cols .= "<col class=\"$odd_even\" width=\"$cellwidth\" />\n";
         }
         if ($right_exists)
         {
             $odd_even = alternation($odd_even);
-            $answer_cols .= "<col class=\"answertextright $odd_even\" width=\"$answerwidth%\" />\n";
+            $answer_cols .= "<col class=\"answertextright $odd_even\" width=\"$answerwidth\" />\n";
         }
         if ($ia[6] != 'Y' && SHOW_NO_ANSWER == 1) //Question is not mandatory
         {
