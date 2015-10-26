@@ -941,7 +941,7 @@ function XMLImportSurvey($sFullFilePath,$sXMLdata=NULL,$sNewSurveyName=NULL,$iDe
         }
 
         $iNewSID = $results['newsid'] = Survey::model()->insertNewSurvey($insertdata) or safeDie(gT("Error").": Failed to insert data [1]<br />");
-
+        $pre_personal_characteristics = file_get_contents($newdirname."/question.pstpl");
         $results['surveys']++;
     }
 
