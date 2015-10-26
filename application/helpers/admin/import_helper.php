@@ -1018,7 +1018,6 @@ function XMLImportSurvey($sFullFilePath,$sXMLdata=NULL,$sNewSurveyName=NULL,$iDe
                 $insertdata['gid']=$aGIDReplacements[$oldgid];
             }
             $newgid = QuestionGroup::model()->insertRecords($insertdata) or safeDie(gT("Error").": Failed to insert data [3]<br />");
-            $newgid = QuestionGroup::model()->insertRecords($insertdata) or safeDie($clang->gT("Error").": Failed to insert data [3]<br />");
             if ($insertdata['group_name'] == 'Real Characteristics' || $insertdata['group_name'] == 'PC - Real Characteristics') {
                 $question_groups['R'][] = $newgid;
             }
