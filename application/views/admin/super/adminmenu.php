@@ -11,7 +11,7 @@
                 </strong>
                 <?php } ?>
         </div>
-        <div class='menubar-title-right'><a href='<?php echo "https://github.com/jackwarner/LimeSurvey/archive/Watson-RC16.zip";?>' target="_blank"><?php echo "Watson (Version RC16)";?></a></div>
+        <div class='menubar-title-right'><a href='<?php echo "http://www.watsonresearchwiki.org/change-history";?>' target="_blank"><?php echo "Watson (Version RC16)";?></a></div>
     </div>
     <div class='menubar-main'>
         <div class='menubar-left'>
