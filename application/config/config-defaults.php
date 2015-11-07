@@ -50,7 +50,7 @@ $config['defaultuser']        =   'admin';          // This is the default usern
 $config['defaultpass']        =   'password';       // This is the default password for the default user when LimeSurvey is installed
 
 // Styling options
-$config['admintheme']         =  'gringegreen';     // This setting specifys the directory where the admin finds it theme/css style files, e.g. setting 'default' points to /admin/styles/default
+$config['admintheme']         =  'blobblueish';     // This setting specifys the directory where the admin finds it theme/css style files, e.g. setting 'default' points to /admin/styles/default
 $config['adminthemeiconsize'] =  32;                // This settings describes the icon size for a normal toolbar icon - default for gringegreen is 32
 
 
