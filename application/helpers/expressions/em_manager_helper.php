@@ -153,8 +153,10 @@
         * @var type
         */
         private $allOnOnePage=false;
+
         /**
         * survey mode.  One of 'survey', 'group', or 'question'
+        * @todo Please add more information here. What does the alternatives mean?
         * @var string
         */
         private $surveyMode='group';
@@ -722,7 +724,8 @@
             $iSessionSurveyId=self::getLEMsurveyId();
             if($aSessionSurvey=Yii::app()->session["survey_{$iSessionSurveyId}"])
             {
-                Yii::app()->session["survey_{$iSessionSurveyId}"]['LEMtokenResume']=true;
+                $aSessionSurvey['LEMtokenResume']=true;
+                Yii::app()->session["survey_{$iSessionSurveyId}"]=$aSessionSurvey;
             }
         }
 
@@ -1324,7 +1327,7 @@
                 }
 
                 // individual subquestion relevance
-                if ($hasSubqs && 
+                if ($hasSubqs &&
                     $type!='|' && $type!='!' && $type !='L' && $type !='O'
                 )
                 {
@@ -1464,30 +1467,9 @@
                             );
                         }
                         break;
-                    case 'D':  // dropdown box: validate that a complete date is entered
-                               // TODO: generic validation as to dateformat[SGQA].value
-                        if ($hasSubqs) {
-                            $subqs = $qinfo['subqs'];
-                            $sq_equs=array();
-
-                           foreach($subqs as $sq)
-                            {
-                                $sq_name = ($this->sgqaNaming)?$sq['rowdivid'].".NAOK":$sq['varName'].".NAOK";
-                                $sq_equs[] = '('.$sq_name.'!="INVALID")';
-                            }
-                            if (!isset($validationEqn[$questionNum]))
-                            {
-                                $validationEqn[$questionNum] = array();
-                            }
-                            $validationEqn[$questionNum][] = array(
-                            'qtype' => $type,
-                            'type' => 'default',
-                            'class' => 'default',
-                            'eqn' =>  implode(' and ',$sq_equs),
-                            'qid' => $questionNum,
-                            );
-                        }
-                         break;
+                    case 'D':
+                        // TODO: generic validation as to dateformat[SGQA].value : BUT not same in PHP and JS
+                        break;
                     default:
                         break;
                 }
@@ -1545,6 +1527,55 @@
                     }
                 }
 
+                // dropdown_dates
+                // dropdown box: validate that a complete date is entered
+                if (isset($qattr['dropdown_dates']) && $qattr['dropdown_dates'])
+                {
+                    $dropdown_dates = $qattr['dropdown_dates'];
+                    if ($hasSubqs) {
+                        $subqs = $qinfo['subqs'];
+                        $sq_names = array();
+                        $subqValidEqns = array();
+                        foreach ($subqs as $sq) {
+                            $sq_name = NULL;
+                            switch ($type)
+                            {
+                                case 'D': //DATE QUESTION TYPE
+                                    $sq_name = ($this->sgqaNaming)?$sq['rowdivid'].".NAOK":$sq['varName'].".NAOK";
+                                    $sq_name = '('.$sq_name.'!="INVALID")';
+                                    $subqValidSelector = '';
+                                    break;
+                                default:
+                                    break;
+                            }
+                            if (!is_null($sq_name)) {
+                                $sq_names[] = $sq_name;
+                                $subqValidEqns[$subqValidSelector] = array(
+                                'subqValidEqn' => $sq_name,
+                                'subqValidSelector' => $subqValidSelector,
+                                );
+                            }
+                        }
+                        if (count($sq_names) > 0) {
+                            if (!isset($validationEqn[$questionNum]))
+                            {
+                                $validationEqn[$questionNum] = array();
+                            }
+                            $validationEqn[$questionNum][] = array(
+                            'qtype' => $type,
+                            'type' => 'dropdown_dates',
+                            'class' => 'dropdown_dates',
+                            'eqn' => implode(' && ', $sq_names),
+                            'qid' => $questionNum,
+                            'subqValidEqns' => $subqValidEqns,
+                            );
+                        }
+                    }
+                }
+                else
+                {
+                    $dropdown_dates='';
+                }
                 // date_min
                 // Maximum date allowed in date question
                 if (isset($qattr['date_min']) && trim($qattr['date_min']) != '')
@@ -3091,15 +3122,13 @@
                     case 'R':
                         $qtips['default']=$this->gT("All your answers must be different and you must rank in order.");
                         break;
-// Helptext is added in qanda_help.php
-/*                  case 'D':
-                        $qtips['default']=$this->gT("Please complete all parts of the date.");
-                        break;
-*/
                     default:
                         break;
                 }
-
+                if($dropdown_dates)
+                {
+                    $qtips['dropdown_dates']=$this->gT("Please complete all parts of the date.");
+                }
                 if($commented_checkbox)
                 {
                     switch ($commented_checkbox)
@@ -4325,8 +4354,8 @@
         * @param integer $numRecursionLevels - the number of times to recursively subtitute values in this string
         * @param integer $whichPrettyPrintIteration - if want to pretty-print the source string, which recursion  level should be pretty-printed
         * @param boolean $noReplacements - true if we already know that no replacements are needed (e.g. there are no curly braces)
-        * @param boolean $timeit 
-        * @param boolean $staticReplacement - return HTML string without the system to update by javascript 
+        * @param boolean $timeit
+        * @param boolean $staticReplacement - return HTML string without the system to update by javascript
         * @return string - the original $string with all replacements done.
         */
 
@@ -4812,6 +4841,7 @@
             $LEM->indexQseq=array();
             $LEM->qrootVarName2arrayFilter=array();
             templatereplace("{}"); // Needed for coreReplacements in relevance equation (in all mode)
+
             if (isset($_SESSION[$LEM->sessid]['startingValues']) && is_array($_SESSION[$LEM->sessid]['startingValues']) && count($_SESSION[$LEM->sessid]['startingValues']) > 0)
             {
                 $startingValues = array();
@@ -4840,12 +4870,13 @@
                     switch ($knownVar['type'])
                     {
                         case 'D': //DATE
-                            if (trim($value)=="" | $value=='INVALID')
+                            if (trim($value)=="")
                             {
                                 $value = NULL;
                             }
                             else
                             {
+                                // We don't really validate date here, anyone can send anything : forced too 
                                 $dateformatdatat=getDateFormatData($LEM->surveyOptions['surveyls_dateformat']);
                                 $datetimeobj = new Date_Time_Converter($value, $dateformatdatat['phpdate']);
                                 $value=$datetimeobj->convert("Y-m-d H:i");
@@ -5164,7 +5195,7 @@
                     while (true)
                     {
                         $LEM->currentQset = array();    // reset active list of questions
-                        if (++$LEM->currentQuestionSeq >= $LEM->numQuestions) // Move next with finished, but without submit. 
+                        if (++$LEM->currentQuestionSeq >= $LEM->numQuestions) // Move next with finished, but without submit.
                         {
                             $message .= $LEM->_UpdateValuesInDatabase($updatedValues,true);
                             $LEM->runtimeTimings[] = array(__METHOD__,(microtime(true) - $now));
@@ -5341,7 +5372,7 @@
                     switch($type)
                     {
                         case 'D': //DATE
-                            if (trim($val)=='')
+                            if (trim($val)=='' || $val=="INVALID")
                             {
                                 $val=NULL;  // since some databases can't store blanks in date fields
                             }
@@ -5480,6 +5511,7 @@
 
             $LEM->ParseResultCache=array();    // to avoid running same test more than once for a given group
             $LEM->updatedValues = array();
+            // TODO: Should seq be below 0? It will be -1 after survey submit and re-click on invitation link in e-mail (see issue #10162).
             --$seq; // convert to 0-based numbering
 
             switch ($LEM->surveyMode)
@@ -5611,7 +5643,7 @@
                     $LEM->StartProcessingPage();
                     if ($processPOST)
                         $updatedValues=$LEM->ProcessCurrentResponses();
-                    else 
+                    else
                         $updatedValues = array();
                     $message = '';
                     if (!$force && $LEM->currentQuestionSeq != -1 && $seq > $LEM->currentQuestionSeq)
@@ -6067,7 +6099,7 @@
                         // Relevance of subquestion for ranking question depend of the count of relevance of answers.
                         $iCountRank=(isset($iCountRank) ? $iCountRank+1 : 1);
                         // Relevant count is : Total answers less Unrelevant answers. subQrelInfo give only array with relevance equation, not this without any relevance.
-                        $iCountRelevant=isset($iCountRelevant) ? $iCountRelevant : count($sgqas)-count(array_filter($LEM->subQrelInfo[$qid],function($sqRankAnwsers){ return !$sqRankAnwsers['result']; })); 
+                        $iCountRelevant=isset($iCountRelevant) ? $iCountRelevant : count($sgqas)-count(array_filter($LEM->subQrelInfo[$qid],function($sqRankAnwsers){ return !$sqRankAnwsers['result']; }));
                         if($iCountRank >  $iCountRelevant)
                         {
                             $foundSQrelevance=true;
@@ -6699,7 +6731,6 @@
                     }
                 }
             }
-
 
             //////////////////////////////////////////////////////////////////////////
             // STORE METADATA NEEDED FOR SUBSEQUENT PROCESSING AND DISPLAY PURPOSES //
@@ -8495,20 +8526,26 @@ EOD;
                         switch($type)
                         {
                             case 'D': //DATE
-                                if (isset($_POST['qattribute_answer'.$sq]))       // push validation message (see qanda_helper) to $_SESSION
-                                {
-                                    $_SESSION[$LEM->sessid]['qattribute_answer'.$sq]=($_POST['qattribute_answer'.$sq]);
-                                }
                                 $value=trim($value);
-                                if ($value!="" && $value!='INVALID')
+                                if ($value!="" && $value!="INVALID")
                                 {
                                     $aAttributes=$LEM->getQuestionAttributesForEM($LEM->sid, $qid,$_SESSION['LEMlang']);
                                     if (!isset($aAttributes[$qid])) {
                                         $aAttributes[$qid]=array();
                                     }
                                     $aDateFormatData=getDateFormatDataForQID($aAttributes[$qid],$LEM->surveyOptions);
+                                    // We don't really validate date here : if date is invalid : return 1999-12-01 00:00
                                     $oDateTimeConverter = new Date_Time_Converter(trim($value), $aDateFormatData['phpdate']);
-                                    $value=$oDateTimeConverter->convert("Y-m-d H:i"); // TODO : control if inverse function original value
+                                    $newValue=$oDateTimeConverter->convert("Y-m-d H:i");
+                                    $oDateTimeConverter = new Date_Time_Converter($newValue, "Y-m-d H:i");
+                                    if($value==$oDateTimeConverter->convert($aDateFormatData['phpdate'])) // control if inverse function original value
+                                    {
+                                        $value=$newValue;
+                                    }
+                                    else
+                                    {
+                                        $value="";// Or $value="INVALID" ? : dropdown is OK with this not default.
+                                    }
                                 }
                                 break;
 #                            case 'N': //NUMERICAL QUESTION TYPE
@@ -9141,7 +9178,7 @@ EOD;
                 $sgqas = explode('|',$q['sgqa']);
                 if (count($sgqas) == 1 && !is_null($q['info']['default']))
                 {
-                    $LEM->ProcessString(htmlspecialchars($q['info']['default']), $qid,NULL,false,1,1,false,false);// Default value is Y or answer code or go to input/textarea, then we can filter it
+                    $LEM->ProcessString($q['info']['default'], $qid,NULL,false,1,1,false,false);// Default value is Y or answer code or go to input/textarea, then we can filter it
                     $_default = $LEM->GetLastPrettyPrintExpression();
                     if ($LEM->em->HasErrors()) {
                         ++$errorCount;
@@ -10027,7 +10064,7 @@ EOD;
             $oToken = Token::model($iSurveyId)->findByAttributes(array(
                 'token' => $sToken
             ));
-            
+
             if ($oToken)
             {
                 foreach ($oToken->attributes as $attribute => $value)
