@@ -819,8 +819,7 @@ class templates extends Survey_Common_Action
         'welcome.pstpl',
         'privacy.pstpl',
         'navigator.pstpl',
-        'endpage.pstpl',
-        'question.pstpl'
+        'endpage.pstpl'
         );
         $Question = array('startpage.pstpl',
         'survey.pstpl',
