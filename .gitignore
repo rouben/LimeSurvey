@@ -2,6 +2,25 @@
 #########################
 .idea/*
 .project
+/upload/surveys/*
+/styles/gringegreen/images/Thumbs.db
+/upload/templates/*
+/upload/labels/*
+!/upload/labels/readme.txt
+/tmp/runtime/HTML
+/application/controllers/admin/updater.php
+/tmp/*.html
+/tmp/*.lss
+/tmp/*.png
+/tmp/*.xls
+/tmp/*.lsa
+/tmp/upload/fu*
+/upload/.htaccess
+/nbproject
+/tmp/assets/*
+!/tmp/assets/.gitignore
+!/tmp/assets/index.html
+/tmp/runtime/cache/*
 *.iml
 
 # Watson template and uploads created when testing #
@@ -18,43 +37,4 @@
 .settings/org.eclipse.php.core.prefs
 .buildpath
 /application/config/config.php
-!/tmp/runtime/readme.txt
-/tmp/upload/*
-!/tmp/upload/readme.txt
-/tmp/template*
-/tmp/assets
-/tmp/*.lss
-
-# Packages #
-############
-*.7z
-*.dmg
-*.gz
-*.bz2
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-*.tgz
-
-# Logs and databases #
-######################
-*.log
-
-# OS generated files #
-######################
-.DS_Store*
-ehthumbs.db
-Icon?
-Thumbs.db
-._*
-
-# Vim generated files #
-######################
-*.un~
-
-# SASS #
-##########
-.sass-cache
-
+application/config/_config.php

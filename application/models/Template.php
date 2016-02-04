@@ -64,18 +64,54 @@ class Template extends LSActiveRecord
         $sDefaulttemplate=Yii::app()->getConfig('defaulttemplate','default');
         $sTemplateName=empty($sTemplateName) ? $sDefaulttemplate : $sTemplateName;
 
-        /* Validate it's a real dir included in template allowed dir 
-        *  Alternative : use realpath("$dir/$sTemplateName")=="$dir/$sTemplateName" and is_dir
-        */
-        if(array_key_exists($sTemplateName,self::getTemplateList()))
+        /* Standard Template return it without testing */
+        if(self::isStandardTemplate($sTemplateName))
+        {
             return $sTemplateName;
-
-        // If needed recall the function with default template
+        }
+        /* Validate if template is OK in user dir, DIRECTORY_SEPARATOR not needed "/" is OK */
+        if(is_file(Yii::app()->getConfig("usertemplaterootdir").DIRECTORY_SEPARATOR.$sTemplateName.DIRECTORY_SEPARATOR.'config.xml'))
+        {
+            return $sTemplateName;
+        }
+        /* Then try with the global default template */
         if($sTemplateName!=$sDefaulttemplate)
             return self::templateNameFilter($sDefaulttemplate);
-
-        // Last solution is default
+        /* Last solution : default */
         return 'default';
+    }
+
+
+    public static function checkIfTemplateExists($sTemplateName)
+    {
+        $sTemplatePath = self::getTemplatePath($sTemplateName);
+        return is_dir($sTemplatePath.'/'.$sTemplateName);
+    }
+
+    /**
+     * Return the necessary datas to load the admin theme
+     */
+    public static function getAdminTheme()
+    {
+        // We retrieve the admin theme in config ( {{settings_global}} or config-defaults.php )
+        $sAdminThemeName = Yii::app()->getConfig('admintheme');
+        $oAdminTheme = new stdClass();
+
+        // If the required admin theme doesn't exist, Sea_Green will be used
+        // TODO : check also for upload directory
+        $oAdminTheme->name = (is_dir(Yii::app()->basePath.'/../styles/'.$sAdminThemeName))?$sAdminThemeName:'Sea_Green';
+
+        // The package name eg: lime-bootstrap-Sea_Green
+        $oAdminTheme->packagename = 'lime-bootstrap-'.$oAdminTheme->name;
+
+        // The path of the template files eg : /var/www/limesurvey/styles/Sea_Green
+        // TODO : add the upload directory for user template
+        $oAdminTheme->path = realpath(Yii::app()->basePath.'/../styles/'.$oAdminTheme->name);
+
+        // The template configuration.
+        $oAdminTheme->config = simplexml_load_file($oAdminTheme->path.'/config.xml');
+
+        return $oAdminTheme;
     }
 
     /**
@@ -100,6 +136,47 @@ class Template extends LSActiveRecord
             return $aTemplatePath[$sTemplateName]=Yii::app()->getConfig("usertemplaterootdir").DIRECTORY_SEPARATOR.$sFilteredTemplateName;
         }
     }
+
+    public static function getTemplateConfiguration($sTemplateName='', $iSurveyId='')
+    {
+        if($sTemplateName=='')
+        {
+            $oSurvey = Survey::model()->findByPk($iSurveyId);
+            $sTemplateName = $oSurvey->template;
+        }
+
+        $oTemplate = new stdClass();
+        $oTemplate->isStandard = self::isStandardTemplate($sTemplateName);
+        // If the template doesn't exist, set to Default
+        if($oTemplate->isStandard)
+        {
+            $oTemplate->name = $sTemplateName;
+            $oTemplate->path = Yii::app()->getConfig("standardtemplaterootdir").DIRECTORY_SEPARATOR.$oTemplate->name;
+        }
+        else
+        {
+            if(is_file(Yii::app()->getConfig("usertemplaterootdir").DIRECTORY_SEPARATOR.$sTemplateName.DIRECTORY_SEPARATOR.'config.xml'))
+            {
+                $oTemplate->name = $sTemplateName;
+                $oTemplate->path = Yii::app()->getConfig("usertemplaterootdir").DIRECTORY_SEPARATOR.$oTemplate->name;
+            }
+            else
+            {
+                $oTemplate->name = 'default';
+                $oTemplate->path = Yii::app()->getConfig("standardtemplaterootdir").DIRECTORY_SEPARATOR.$oTemplate->name;
+            }
+        }
+
+        // The template configuration.
+        $oTemplate->config = simplexml_load_file($oTemplate->path.'/config.xml');
+        $oTemplate->viewPath = $oTemplate->path.DIRECTORY_SEPARATOR.$oTemplate->config->engine->pstpldirectory.DIRECTORY_SEPARATOR;
+
+        $oTemplate->cssFramework = $oTemplate->config->engine->cssframework;
+        $oTemplate->packages = (array) $oTemplate->config->engine->packages->package;
+
+        return $oTemplate;
+    }
+
 
     /**
     * This function returns the complete URL path to a given template name
@@ -161,6 +238,45 @@ class Template extends LSActiveRecord
         return $aTemplateList;
     }
 
+    public static function getTemplateListWithPreviews()
+    {
+        $usertemplaterootdir=Yii::app()->getConfig("usertemplaterootdir");
+        $standardtemplaterootdir=Yii::app()->getConfig("standardtemplaterootdir");
+
+        $aTemplateList=array();
+
+        if ($handle = opendir($standardtemplaterootdir))
+        {
+            while (false !== ($file = readdir($handle)))
+            {
+                // Why not return directly standardTemplate list ?
+                if (!is_file("$standardtemplaterootdir/$file") && self::isStandardTemplate($file))
+                {
+                    $aTemplateList[$file]['directory'] = $standardtemplaterootdir.DIRECTORY_SEPARATOR.$file;
+                    $aTemplateList[$file]['preview'] = Yii::app()->request->baseUrl.'/templates/'.$file.'/preview.png';
+                }
+            }
+            closedir($handle);
+        }
+
+        if ($usertemplaterootdir && $handle = opendir($usertemplaterootdir))
+        {
+            while (false !== ($file = readdir($handle)))
+            {
+                // Maybe $file[0] != "." to hide Linux hidden directory
+                if (!is_file("$usertemplaterootdir/$file") && $file != "." && $file != ".." && $file!=".svn")
+                {
+                    $aTemplateList[$file]['directory']  = $usertemplaterootdir.DIRECTORY_SEPARATOR.$file;
+                    $aTemplateList[$file]['preview'] = Yii::app()->request->baseUrl.'/upload/templates/'.$file.'/preview.png';
+                }
+            }
+            closedir($handle);
+        }
+        ksort($aTemplateList);
+
+        return $aTemplateList;
+    }
+
     /**
     * isStandardTemplate returns true if a template is a standard template
     * This function does not check if a template actually exists
@@ -172,17 +288,12 @@ class Template extends LSActiveRecord
     {
         return in_array($sTemplateName,
             array(
-                'basic',
-                'bluengrey',
-                'business_grey',
-                'citronade',
-                'clear_logo',
                 'default',
-                'eirenicon',
-                'limespired',
-                'mint_idea',
-                'sherpa',
-                'vallendar',
+                'material_design',
+                'metro_ode',
+                'news_paper',
+                'night_mode',
+                'ubuntu_orange',
             )
         );
     }

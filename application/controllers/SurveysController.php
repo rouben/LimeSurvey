@@ -17,7 +17,7 @@
 
             // Custom index page for Neill Watson
             print file_get_contents("custom-homepage.html");
-            
+
         }
     }
 ?>
