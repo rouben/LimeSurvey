@@ -183,9 +183,9 @@ $(document).ready(function() {
                 colModel:[{ name:'survey_name',index:'survey_name', width:400,align:'center', sorttype:"string", sortable: true},
                     { name:'survey_id',index:'survey_id', width:90,align:'center', sorttype:"int", sortable: true},
                     { name:'token_id',index:'token_id', width:80, align:'center', sorttype:"int", sortable: true},
-                    { name:'date_created',index:'date_created', width:100,align:'center', sorttype:"string", sortable: true},
-                    { name:'date_invited',index:'date_invited', width:100,align:'center', sorttype:"string", sortable: true},
-                    { name:'date_completed',index:'date_invited', width:100,align:'center', sorttype:"string", sortable: true}],
+                    { name:'date_created',index:'date_created', width:100,align:'center', sorttype:"date", sortable: true},
+                    { name:'date_invited',index:'date_invited', width:100,align:'center', sorttype:"date", sortable: true},
+                    { name:'date_completed',index:'date_invited', width:100,align:'center', sorttype:"date", sortable: true}],
                 caption: linksHeadingTxt,
                 pager: second_pager_id,
                 viewrecords: true,
@@ -590,6 +590,9 @@ $(document).ready(function() {
                     modal: true,
                     open: function(event, ui) {
                         $('#addsurvey').dialog('option', 'title', addsurvey + ' ('+totalitems+')');
+
+                        // Add Bootstrap classes to buttons ad hoc
+                        $('.ui-dialog-buttonpane button').addClass('btn btn-default');
                     },
                     buttons: dialog_buttons
                 });
@@ -679,7 +682,7 @@ $(document).ready(function() {
                 $("#displayparticipants_"+parid[0]+"_t").setColProp('attvalue',{ editoptions:''});
             }
             if(method=='edit') {
-             //   jQuery("#displayparticipants_"+parid[0]+"_t").jqGrid('restoreRow',id);
+                jQuery("#displayparticipants_"+parid[0]+"_t").jqGrid('restoreRow',id);
             }
             if(method=='click') {
                 jQuery("#displayparticipants_"+parid[0]+"_t").jqGrid('restoreRow',id);

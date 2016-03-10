@@ -33,7 +33,7 @@ class conditionsaction extends Survey_Common_Action {
             $aData['sidemenu']['state'] = false;
             $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
             $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
-            $aData['questionbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$iSurveyID.'/gid/'.$gid.'/qid/'.$qid;
+            $aData['questionbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$iSurveyID.'/gid/'.$gid.'/qid/'.$qid;  // Close button
             $aData['questionbar']['buttons']['conditions'] = TRUE;
 
             switch($subaction)
@@ -147,7 +147,7 @@ class conditionsaction extends Survey_Common_Action {
         if (!isset($iSurveyID) || !$iSurveyID)
         {
             $conditionsoutput = gT("You have not selected a survey").str_repeat($br, 2);
-            $conditionsoutput .= CHtml::submitButton(gT("Main admin screen"), array(
+            $conditionsoutput .= CHtml::submitButton(gT("Main admin screen",'unescaped'), array(
             'onclick' => "window.open('".$this->getController()->createUrl("admin/")."', '_top')"
             )).$br;
             safeDie($conditionsoutput);
@@ -167,10 +167,10 @@ class conditionsaction extends Survey_Common_Action {
 
             if (!isset($_GET['ok']))
             {
-                $button_yes = CHtml::submitButton(gT("Yes"), array(
+                $button_yes = CHtml::submitButton(gT("Yes",'unescaped'), array(
                 'onclick' => "window.open('".$this->getController()->createUrl("admin/conditions/sa/index/subaction/resetsurveylogic/surveyid/$iSurveyID")."?ok=Y"."', '_top')"
                 ));
-                $button_cancel = CHtml::submitButton(gT("Cancel"), array(
+                $button_cancel = CHtml::submitButton(gT("Cancel",'unescaped'), array(
                 'onclick' => "window.open('".$this->getController()->createUrl("admin/survey/sa/view/surveyid/$iSurveyID")."', '_top')"
                 ));
 
@@ -201,7 +201,7 @@ class conditionsaction extends Survey_Common_Action {
         if ( !isset($qid) || !$qid )
         {
             $conditionsoutput = gT("You have not selected a question").str_repeat($br, 2);
-            $conditionsoutput .= CHtml::submitButton(gT("Main admin screen"), array(
+            $conditionsoutput .= CHtml::submitButton(gT("Main admin screen",'unescaped'), array(
             'onclick' => "window.open('".$this->getController()->createUrl("admin/")."', '_top')"
             )).$br;
             safeDie($conditionsoutput);
@@ -1204,7 +1204,8 @@ class conditionsaction extends Survey_Common_Action {
             $scenarioresult = Condition::model()->findAll($criteria);
             $scenariocount=count($scenarioresult);
 
-            $showreplace="$questiontitle". $this->_showSpeaker($questiontext);
+            //$showreplace="$questiontitle". $this->_showSpeaker($questiontext);
+            $showreplace=$questiontitle . $this->_showSpeaker($questiontext);
             $onlyshow=sprintf(gT("Only show question %s IF"),$showreplace);
 
             $aData['conditionsoutput'] = '';
@@ -1213,6 +1214,7 @@ class conditionsaction extends Survey_Common_Action {
             $aData['conditionsoutput_action_error'] = $conditionsoutput_action_error;
             $aData['javascriptpre'] = $javascriptpre;
             $aData['onlyshow'] = $onlyshow;
+            $aData['showreplace'] = $showreplace;
             $aData['subaction'] = $subaction;
             $aData['scenariocount'] = $scenariocount;
 

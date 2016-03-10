@@ -6,10 +6,9 @@
 // @license magnet:?xt=urn:btih:cf05388f2679ee054f2beb29a391d25f4e673ac3&dn=gpl-2.0.txt  GNU/GPL License v2 or later
 
 
-/*
-* Scroll the pager and the footer when scrolling horizontally
-* Maybe for token table too
-*/
+/**
+ * Scroll the pager and the footer when scrolling horizontally
+ */
 $(document).ready(function(){
     $('#displayResponsesContainer').scroll(function(){
         $('#pager').css({
@@ -42,6 +41,7 @@ $(document).on("click","[data-delete]",function(event){
 $(function() {
 
     /* Launch jqgrid */
+
     jQuery("#displayresponses").jqGrid({
         recordtext : sRecordText,
         emptyrecords : sEmptyRecords,
@@ -58,7 +58,7 @@ $(function() {
         height : "100%",
         //shrinkToFit : false,
         ignoreCase : true,
-        rowNum : 25,
+        rowNum : 10,
         editable : false,
         scrollOffset : 0,
         sortable : true,
@@ -66,7 +66,7 @@ $(function() {
         sortname : 'id',
         sortorder : 'asc',
         viewrecords : true,
-        rowList : [ 25, 50, 100, 250, 500, 1000 ],
+        rowList : [ 10, 25, 50, 100, 250, 500, 1000 ],
         multiselect : true,
         loadonce : false, // use ajax request
         pager : "#pager",
@@ -90,17 +90,19 @@ $(function() {
             return true;
         }
     });
+
     /* Add navgrid */
-    jQuery("#displayresponses").jqGrid(
-        'navGrid',
-        '#pager',
+    jQuery("#displayresponses").jqGrid( 'navGrid', '#pager',
         {
+            add: false,
+            edit: false,
+            del: true,
+            alertcap: sWarningMsg,
+            alerttext: sSelectRowMsg,
             searchtitle : sSearchTitle,
             refreshtitle : sRefreshTitle,
-            edit: false,
-            add: false,
-            del: true,
-            search: false, //true when https://github.com/LimeSurvey/LimeSurvey/commit/c710ac795b471c4370cc45027542c54f791e5950#diff-15547196721577f485345c4a68f0c5d0R629 is done
+            deltitle : sDelTitle,
+            search: true,
             refresh: true,
             view: false,
             position: "left"
@@ -121,7 +123,7 @@ $(function() {
                 $(document).scrollTop(selRowCoordinates.top);
             },
         },
-        { // Deactivate actually, leave the option.
+        { // Search options
             caption : sSearchCaption,
             Find : sFind,
             multipleSearch: true,
@@ -130,9 +132,12 @@ $(function() {
                 sOperator7, sOperator8, sOperator9,
                 sOperator10, sOperator11, sOperator12,
                 sOperator13, sOperator14 ],
-            Reset : sReset
-        } // search options - define multiple search : TODO
+            Reset : sReset,
+            width: 700
+        }
+
     );
+
     /* quick search toolbar */
     jQuery("#displayresponses").jqGrid('filterToolbar', {
         searchOnEnter : false,

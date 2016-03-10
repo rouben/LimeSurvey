@@ -195,7 +195,7 @@ CREATE TABLE [prefix_participants] (
 [participant_id] varchar(50) NOT NULL,
 [firstname] nvarchar(150) NULL,
 [lastname] nvarchar(150) NULL,
-[email] nvarchar(254) NULL,
+[email] nvarchar(max) NULL,
 [language] varchar(40) NULL,
 [blacklisted] varchar(1) NOT NULL,
 [owner_uid] int NOT NULL,
@@ -540,7 +540,7 @@ CREATE TABLE [prefix_users] (
 -- Table structure for table templates
 --
 CREATE TABLE [prefix_templates] (
-[folder] nvarchar(255) NOT NULL,
+[folder] nvarchar(50) NOT NULL,
 [creator] int NOT NULL,
 PRIMARY KEY  ([folder])
 );
@@ -554,20 +554,20 @@ CREATE TABLE prefix_boxes (
   [position] int DEFAULT NULL ,
   [url] varchar(max) NOT NULL ,
   [title] varchar(max) NOT NULL ,
-  [img] varchar(max) NOT NULL ,
   [ico] varchar(max) DEFAULT NULL,
   [desc] varchar(max) NOT NULL ,
   [page] varchar(max) NOT NULL ,
+  [usergroup] int NOT NULL,
   PRIMARY KEY ([id])
-)  CHARACTER SET @utf8 COLLATE utf8_unicode_ci;
+);
 
-INSERT INTO prefix_boxes ([id], [position], [url], [title], [img], [desc], [page]) VALUES
-(1, 1, 'admin/survey/sa/newsurvey', 'Create survey', 'add.png', 'add', 'Create a new survey', 'welcome'),
-(2, 2, 'admin/survey/sa/listsurveys', 'List surveys', 'surveylist.png', 'list', 'List available surveys', 'welcome'),
-(3, 3, 'admin/globalsettings', 'Global settings', 'global.png', 'settings', 'Edit global settings', 'welcome'),
-(4, 4, 'admin/update', 'ComfortUpdate', 'shield&#45;update.png', 'shield', 'Stay safe and up to date', 'welcome'),
-(5, 5, 'admin/labels/sa/view', 'Label sets', 'labels.png', 'label','Edit label sets', 'welcome'),
-(6, 6, 'admin/templates/sa/view', 'Template editor', 'templates.png','templates', 'Edit LimeSurvey templates', 'welcome');
+INSERT INTO prefix_boxes ([position], [url], [title], [ico], [desc], [page], [usergroup]) VALUES
+(1, 'admin/survey/sa/newsurvey', 'Create survey', 'add', 'Create a new survey', 'welcome', '-2'),
+(2, 'admin/survey/sa/listsurveys', 'List surveys', 'list', 'List available surveys', 'welcome', '-1'),
+(3, 'admin/globalsettings', 'Global settings', 'settings', 'Edit global settings', 'welcome', '-2'),
+(4, 'admin/update', 'ComfortUpdate', 'shield', 'Stay safe and up to date', 'welcome', '-2'),
+(5, 'admin/labels/sa/view', 'Label sets', 'label','Edit label sets', 'welcome', '-2'),
+(6, 'admin/templates/sa/view', 'Template editor', 'templates', 'Edit LimeSurvey templates', 'welcome', '-2');
 
 
 
@@ -592,4 +592,4 @@ create index [parent_qid_idx] on [prefix_questions] ([parent_qid]);
 --
 -- Version Info
 --
-INSERT INTO [prefix_settings_global] VALUES ('DBVersion', '253');
+INSERT INTO [prefix_settings_global] VALUES ('DBVersion', '257');

@@ -28,6 +28,8 @@ var COLORS_FOR_SURVEY = new Array('20,130,200','232,95,51','34,205,33','210,211,
            var $type = $elem.data('type');
            var $qid = $elem.data('qid');
 
+           console.log('QID: '+$elem.data('qid'));
+
            $(window).scroll(function() {
                var $window = $(window);
                var docViewTop = $window.scrollTop();
@@ -106,13 +108,12 @@ function init_chart_js_graph_with_datasets($type,$qid)
             window.chartjs[$qid].destroy();
         }
     }
-
+    
     window.chartjs[$qid] = new Chart($canvas)[$type]({
         labels: $labels,
         datasets: [{
             label: $qid,
             data: $grawdata,
-
             fillColor: "rgba("+COLORS_FOR_SURVEY[$color]+",0.2)",
             strokeColor: "rgba("+COLORS_FOR_SURVEY[$color]+",1)",
             pointColor: "rgba("+COLORS_FOR_SURVEY[$color]+",1)",
@@ -166,6 +167,7 @@ function init_chart_js_graph_with_datas($type,$qid)
         }
     }
 
+    console.log($type);
     window.chartjs[$qid] = new Chart($canvas)[$type](
         $chartDef
     );
@@ -178,12 +180,6 @@ $(document).ready(function() {
     {
         $('.chartjs-container').loadGraph();
     }
-
-    $("[name='viewsummaryall']").bootstrapSwitch();
-    $("[name='noncompleted']").bootstrapSwitch();
-    $("[name='showtextinline']").bootstrapSwitch();
-    $("[name='usegraph']").bootstrapSwitch();
-
 
     $('#generalfilters-chevron').click(function(){
         toggleSection($('#generalfilters-chevron'), $('#statisticsgeneralfilters') );

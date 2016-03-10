@@ -10,7 +10,7 @@ return array(
     'jquery' => array(
         'baseUrl' => 'third_party/jquery/',
         'js' => array(
-            'jquery-1.11.1.min.js'
+            'jquery-1.12.1.min.js'
         ),
     ),
 
@@ -248,6 +248,17 @@ return array(
         'baseUrl' => 'styles/limebootstrap/assets/',
         'js' => array('scripts/select2.js'),
         'depends' => array(
+        ),
+    ),
+
+    // leaflet, needed for short text question with map (OSM)
+    'leaflet' => array(
+        'baseUrl' => 'third_party/leaflet/',
+        'js' => array(
+            'leaflet.js'
+        ),
+        'css' => array(
+            'leaflet.css'
         ),
     ),
 );

@@ -1,5 +1,6 @@
- body {
-     padding-top: 50px;
+ body
+ {
+     /*padding-top: 50px; now define in JS to fit any title length */
      padding-bottom: 10px;
  }
 
@@ -20,7 +21,7 @@ div[id^="group-"]>div {
 
 #topContainer {
     position: absolute;
-    top: 55px;
+    /*top: 55px; now define in JS to fit any title length */
     width: 100%;
     padding: 1em;
     border-bottom: none;
@@ -119,6 +120,9 @@ li.responsive-content
         display: block;
     }
 
+    .no-more-tables table.subquestions-list td {
+        text-align: left;
+    }
 
     /* Hide table headers (but not display: none;, for accessibility) */
     .no-more-tables thead tr {
@@ -142,7 +146,7 @@ li.responsive-content
         min-height: 2em;
         border: none;
         position: relative;
-        padding-left: 95%;
+        /*padding-left: 95%;*/
         padding-bottom: 1em;
         white-space: normal;
         text-align:left;
@@ -169,7 +173,7 @@ li.responsive-content
     /*
     Label the data
     */
-    .no-more-tables td:before { content: attr(data-title); }
+    /*.no-more-tables td:before { content: attr(data-title); }*/
 
     .no-more-tables-10-point tr{
         padding-bottom: 100px;
@@ -753,4 +757,94 @@ table.question.subquestion-list.questions-list th,table.question.subquestion-lis
 table.question.subquestion-list.questions-list tr.answers-list th
 {
  text-align: left;
+}
+
+/**
+ * For em-type
+ */
+ .strong
+ {
+     font-weight: bold;
+     font-size: 1.2em;
+     display: inline-block;
+     padding: 0.2em;
+ }
+
+ .hide-tip
+ {
+     display: none;
+ }
+
+/**
+ * Surveys list
+ */
+.surveys-list {
+    margin-top: 1em;
+    list-style: none;
+}
+.surveys-list li {
+    padding: 0.5em;
+}
+.surveys-list li a {
+    margin-left: 0.5em;
+}
+
+#surveys-list-jumbotron {
+    text-align: center;
+}
+
+#outerframeContainer {
+    min-height: 80%;
+}
+
+#surveyListFooter {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    margin-top: 10px;
+}
+
+#surveyListFooter div{
+
+}
+
+html, body {
+    height: 100%;
+}
+
+/**
+ * Gender buttons
+ */
+
+/* Not selected */
+.gender-button button{
+    box-shadow: 2px 2px 2px 0 rgba(0, 0, 0, 0.16), 2px 2px 2px 0 rgba(0, 0, 0, 0.12);
+    margin-left: 1em;
+}
+
+/* selected */
+.gender-button .btn:focus {
+    box-shadow: none;
+}
+
+.gender-button .btn:focus .gender-text{
+    text-decoration: underline;
+}
+
+/* General */
+.gender-button .btn span {
+    display: block;
+}
+
+html body .navbar.navbar-default.navbar-fixed-top {
+    z-index: 2000;
+}
+
+.gender-button .gender-icon {
+    font-size: 2em;
+}
+
+.navbar-brand {
+    height: auto;
 }

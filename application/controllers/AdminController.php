@@ -43,8 +43,8 @@ class AdminController extends LSYii_Controller
         if (!Yii::app()->getConfig("subaction")) {Yii::app()->setConfig("subaction", returnGlobal('subaction'));} //Desired subaction
         if (!Yii::app()->getConfig("editedaction")) {Yii::app()->setConfig("editedaction", returnGlobal('editedaction'));} // for html editor integration
 
-        global $oTemplate;
-        $oTemplate = Template::model()->getTemplateConfiguration(Yii::app()->getConfig("defaulttemplate"));
+        // Variable not used, but keep it here so the object is initialized at the right place.
+        $oTemplate = Template::model()->getInstance(Yii::app()->getConfig("defaulttemplate"));
     }
 
     /**
@@ -52,7 +52,6 @@ class AdminController extends LSYii_Controller
     *
     * @access public
     * @param string $message The error message
-    * @param string|array $url URL. Either a string. Or array with keys url and title
     * @return void
     */
     public function error($message, $sURL = array())
@@ -200,6 +199,7 @@ class AdminController extends LSYii_Controller
         'validate'         => 'ExpressionValidate',
         'globalsettings'   => 'globalsettings',
         'htmleditor_pop'   => 'htmleditor_pop',
+        'homepagesettings'   => 'homepagesettings',
         'limereplacementfields' => 'limereplacementfields',
         'index'            => 'index',
         'labels'           => 'labels',
@@ -298,12 +298,19 @@ class AdminController extends LSYii_Controller
             $aData['formatdata'] = getDateFormatData(Yii::app()->session['dateformat']);
 
         // Register admin theme package with asset manager
-        $oAdmintheme = Template::model()->getAdminTheme(); // We get the package datas from the model
+        $oAdmintheme = new AdminTheme; // We get the package datas from the model
+        $oAdmintheme->setAdminTheme();
         $aData['sAdmintheme'] = $oAdmintheme->name;
-        $aData['sAdminthemePackageName'] = $oAdmintheme->packagename;
-        $aData['aPackageScripts'] = (array) $oAdmintheme->config->files->js->filename;
-        $aData['aPackageStyles'] = (array) $oAdmintheme->config->files->css->filename;
-
+        $aData['aPackageScripts']=$aData['aPackageStyles']=array();
+        // Typecasting as array directly does not work in PHP 5.3.17 so we loop over the XML entries
+        foreach($oAdmintheme->config->files->js->filename as $aFile)
+        {
+            $aData['aPackageScripts'][]=(string)$aFile;
+        }
+        foreach($oAdmintheme->config->files->css->filename as $aFile)
+        {
+            $aData['aPackageStyles'][]=(string)$aFile;
+        }
         if ($aData['bIsRTL'])
         {
             foreach ($aData['aPackageStyles'] as &$filename)

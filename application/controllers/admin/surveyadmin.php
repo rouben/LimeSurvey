@@ -60,7 +60,6 @@ class SurveyAdmin extends Survey_Common_Action
         }
 
         $aData['model'] = $model =  new Survey('search');
-
         // Search
         if (isset($_GET['Survey']['searched_value']))
         {
@@ -70,7 +69,7 @@ class SurveyAdmin extends Survey_Common_Action
         $model->active = null;
 
         // Filter state
-        if (isset($_GET['active']))
+        if (isset($_GET['active']) && !empty($_GET['active']))
         {
             $model->active = $_GET['active'];
         }
@@ -156,7 +155,7 @@ class SurveyAdmin extends Survey_Common_Action
 
         $arrayed_data['title_bar']['title'] = gT('New survey');
         $arrayed_data['fullpagebar']['savebutton']['form'] = 'addnewsurvey';
-        $arrayed_data['fullpagebar']['closebutton']['url'] = 'admin/index';
+        $arrayed_data['fullpagebar']['closebutton']['url'] = 'admin/index';  // Close button
 
         $this->_renderWrappedTemplate('survey', $aViewUrls, $arrayed_data);
     }
@@ -214,7 +213,7 @@ class SurveyAdmin extends Survey_Common_Action
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
 
         $aData['surveybar']['savebutton']['form'] = 'frmeditgroup';
-        $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID;
+        $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID;  // Close button
 
         $this->_renderWrappedTemplate('survey', 'editSurvey_view', $aData);
     }
@@ -406,9 +405,7 @@ class SurveyAdmin extends Survey_Common_Action
     * Load list question groups view for a specified by $iSurveyID
     *
     * @access public
-    * @param mixed $iSurveyID
-    * @param mixed $gid
-    * @param mixed $qid
+    * @param mixed $surveyid The survey ID
     * @return void
     */
     public function listquestiongroups($surveyid)
@@ -504,7 +501,7 @@ class SurveyAdmin extends Survey_Common_Action
         $aData['surveyid'] = $iSurveyID;
         $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
-        $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID;
+        $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID;  // Close button
 
         if (empty($_POST['ok']))
         {
@@ -595,6 +592,8 @@ class SurveyAdmin extends Survey_Common_Action
             Yii::app()->db->schema->refresh();
         }
 
+        $aData['sidemenu']['state'] = false;
+        $aData['surveybar']['closebutton'] = false;
         $this->_renderWrappedTemplate('survey', 'deactivateSurvey_view', $aData);
     }
 
@@ -918,16 +917,6 @@ class SurveyAdmin extends Survey_Common_Action
                 $aData['issuperadmin'] = Permission::model()->hasGlobalPermission('superadmin','read');
                 $this->_deleteSurvey($iSurveyID);
                 Yii::app()->session['flashmessage'] = gT("Survey deleted.");
-
-                // We clean all the last visited
-                $lastLikeSurvey  = 'last%'.$iSurveyID.'%';
-                $lastQuestionGidUser = 'last_question_gid_'.Yii::app()->user->getId();
-                $lastQuestionUser = 'last_question_'.Yii::app()->user->getId();
-                SettingGlobal::model()->deleteAll(
-                            "stg_name LIKE ':stg_name'  OR stg_name = ':last_question_gid_user' OR stg_name = ':last_question_user' OR stg_value = ':stg_value'",
-                            array(':stg_name' => $lastLikeSurvey, ':last_question_gid_user' => $lastQuestionGidUser, ':last_question_user' => $lastQuestionUser , ':stg_value' => $iSurveyID )
-                        );
-
                 $this->getController()->redirect(array("admin/index"));
             }
             else
@@ -1000,7 +989,6 @@ class SurveyAdmin extends Survey_Common_Action
                 if ($esrow['surveyls_language'] == Survey::model()->findByPk($iSurveyID)->language)
                     $aTabTitles[$sLang] .= '(' . gT("Base language") . ')';
 
-                $esrow = array_map('htmlspecialchars', $esrow);
                 $aData['esrow'] = $esrow;
                 $aData['action'] = "editsurveylocalesettings";
                 $aData['i'] = $i;
@@ -1014,31 +1002,24 @@ class SurveyAdmin extends Survey_Common_Action
             $aData['aTabContents'] = $aTabContents;
             $aData['aTabTitles'] = $aTabTitles;
 
+            $esrow = array();
+            $esrow = self::_fetchSurveyInfo('editsurvey', $iSurveyID);
+            $aData['esrow'] = $esrow;
 
+            $aData = array_merge($aData, $this->_generalTabEditSurvey($iSurveyID, $esrow));
+            $aData = array_merge($aData, $this->_tabPresentationNavigation($esrow));
+            $aData = array_merge($aData, $this->_tabPublicationAccess($esrow));
+            $aData = array_merge($aData, $this->_tabNotificationDataManagement($esrow));
+            $aData = array_merge($aData, $this->_tabTokens($esrow));
+            $aData = array_merge($aData, $this->_tabPanelIntegration($esrow));
+            $aData = array_merge($aData, $this->_tabResourceManagement($iSurveyID));
 
-        $esrow = array();
-        $esrow = self::_fetchSurveyInfo('editsurvey', $iSurveyID);
-        $aData['esrow'] = $esrow;
+            $oResult = Question::model()->getQuestionsWithSubQuestions($iSurveyID, $esrow['language'], "({{questions}}.type = 'T'  OR  {{questions}}.type = 'Q'  OR  {{questions}}.type = 'T' OR {{questions}}.type = 'S')");
 
-        $aData = array_merge($aData, $this->_generalTabEditSurvey($iSurveyID, $esrow));
-        $aData = array_merge($aData, $this->_tabPresentationNavigation($esrow));
-        $aData = array_merge($aData, $this->_tabPublicationAccess($esrow));
-        $aData = array_merge($aData, $this->_tabNotificationDataManagement($esrow));
-        $aData = array_merge($aData, $this->_tabTokens($esrow));
-        $aData = array_merge($aData, $this->_tabPanelIntegration($esrow));
-        $aData = array_merge($aData, $this->_tabResourceManagement($iSurveyID));
-
-
-        $oResult = Question::model()->getQuestionsWithSubQuestions($iSurveyID, $esrow['language'], "({{questions}}.type = 'T'  OR  {{questions}}.type = 'Q'  OR  {{questions}}.type = 'T' OR {{questions}}.type = 'S')");
-
-        $aData['questions'] = $oResult;
-        $aData['display']['menu_bars']['surveysummary'] = "editsurveysettings";
-        $tempData = $aData;
-        $aData['settings_data'] = $tempData;
-
-
-
-
+            $aData['questions'] = $oResult;
+            $aData['display']['menu_bars']['surveysummary'] = "editsurveysettings";
+            $tempData = $aData;
+            $aData['settings_data'] = $tempData;
 
             $aData['sidemenu']['state'] = false;
             $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
@@ -1048,12 +1029,14 @@ class SurveyAdmin extends Survey_Common_Action
             $aData['surveybar']['savebutton']['useformid'] = 'true';
             $aData['surveybar']['saveandclosebutton']['form'] = true;
 
-            $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID;
+            $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID;  // Close button
 
             $aViewUrls[] = 'editLocalSettings_main_view';
         }
         else
+        {
             $this->getController()->error('Access denied');
+        }
 
         $this->_renderWrappedTemplate('survey', $aViewUrls, $aData);
     }
@@ -1438,6 +1421,17 @@ class SurveyAdmin extends Survey_Common_Action
         $aData['esrow'] = $esrow;
         $aData['surveyid'] = $iSurveyID;
 
+        // Get users, but we only need id and name (NOT password etc)
+        $users = getUserList();
+        $aData['users'] = array();
+        foreach ($users as $user)
+        {
+            $aData['users'][] = array(
+                'username' => $user['user'],
+                'uid' => $user['uid'],
+            );
+        }
+
         $beforeSurveySettings = new PluginEvent('beforeSurveySettings');
         $beforeSurveySettings->set('survey', $iSurveyID);
         App()->getPluginManager()->dispatchEvent($beforeSurveySettings);
@@ -1517,6 +1511,7 @@ class SurveyAdmin extends Survey_Common_Action
     */
     private function _tabTokens($esrow)
     {
+        $aData = array();
         $aData['esrow'] = $esrow;
         return $aData;
     }
@@ -1668,7 +1663,7 @@ class SurveyAdmin extends Survey_Common_Action
             $css_files = array(
             );
         }
-//var_dump($js_files); die();
+
         foreach ($js_files as $file)
         {
             App()->getClientScript()->registerScriptFile(  $file );
@@ -1773,7 +1768,7 @@ class SurveyAdmin extends Survey_Common_Action
         $oSurvey->sendconfirmation = App()->request->getPost('sendconfirmation');
         $oSurvey->tokenanswerspersistence = App()->request->getPost('tokenanswerspersistence');
         $oSurvey->alloweditaftercompletion = App()->request->getPost('alloweditaftercompletion');
-        $oSurvey->usecaptcha = App()->request->getPost('usecaptcha');
+        $oSurvey->usecaptcha = Survey::transcribeCaptchaOptions();
         $oSurvey->emailresponseto = App()->request->getPost('emailresponseto');
         $oSurvey->emailnotificationto = App()->request->getPost('emailnotificationto');
         $oSurvey->googleanalyticsapikey = App()->request->getPost('googleanalyticsapikey');
@@ -1944,7 +1939,7 @@ class SurveyAdmin extends Survey_Common_Action
             'sendconfirmation' => App()->request->getPost('sendconfirmation'),
             'tokenanswerspersistence' => App()->request->getPost('tokenanswerspersistence'),
             'alloweditaftercompletion' => App()->request->getPost('alloweditaftercompletion'),
-            'usecaptcha' => App()->request->getPost('usecaptcha'),
+            'usecaptcha' => Survey::transcribeCaptchaOptions(),
             'publicstatistics' => App()->request->getPost('publicstatistics'),
             'publicgraphs' => App()->request->getPost('publicgraphs'),
             'assessments' => App()->request->getPost('assessments'),

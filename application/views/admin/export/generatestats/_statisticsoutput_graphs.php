@@ -12,6 +12,8 @@
  * @var $color
  *
  */
+ // TODO: move to controller
+ $qqid = str_replace ( '-', '__' , $qqid );
 ?>
 <tr>
     <td colspan='4' style=\"text-align:center\" id='statzone_<?php echo $rt;?>'>
@@ -26,14 +28,13 @@
             >
 
             <div class="chartjs-container">
-                <canvas class="canvas-chart " id="chartjs-<?php echo $qqid; ?>" width="400" height="<?php echo $iCanvaHeight;?>"
+                <canvas class="canvas-chart " id="chartjs-<?php echo $qqid; ?>" width="1000" height="500"
                     data-color="<?php echo $color; // the background color for bar, etc. ?>"></canvas>
             </div>
 <!-- maintainAspectRatio: false -->
             </div>
             <!-- legends -->
             <div class="legend col-sm-2 vcenter">
-                <?php  var_dump($lbl);?>
                 <?php foreach($labels as $i=>$label): ?>
                     <?php $colorindex = $color+$i; $colorindex = ($colorindex < 72)?$colorindex:0;?>
                     <div class="row" style="margin-bottom: 10px;">
@@ -42,7 +43,7 @@
                             </span>
                         </div>
                         <div class="col-sm-10">
-                            A<?php echo $label; var_dump($label);?>
+                            <?php echo $label;?>
                         </div>
                     </div>
                 <?php endforeach;?>

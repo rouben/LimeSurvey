@@ -33,7 +33,7 @@
             <?php if ($activesurveyscount > 0): ?>
                 <li>
                     <a href="<?php echo $this->createUrl('admin/survey/sa/listsurveys/active/Y');?>">
-                        <?php echo $activesurveyscount; ?> active surveys
+                        <?php neT("{n} active survey|{n} active surveys",$activesurveyscount); ?>
                     </a>
                 </li>
             <?php endif;?>
@@ -71,6 +71,7 @@
                     <span style="margin-left: 0px;" class="caret"></span>
                 </a>
                 <ul class="dropdown-menu" role="menu">
+                         <?php if (Permission::model()->hasGlobalPermission('surveys','create')): ?>
                          <!-- Create a new survey -->
                          <li>
                              <a href="<?php echo $this->createUrl("admin/survey/sa/newsurvey"); ?>">
@@ -93,7 +94,7 @@
                          </li>
 
                          <li class="divider"></li>
-
+                        <?php endif;?>
                          <!-- List surveys -->
                          <li>
                              <a href="<?php echo $this->createUrl("admin/survey/sa/listsurveys"); ?>">
@@ -108,6 +109,11 @@
             <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" ><?php echo Yii::app()->session['user'];?> <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
+
+                    <!-- Edit your profile -->
+                    <li>
+                        <a href="<?php echo $this->createUrl("/admin/user/sa/modifyuser/uid/".Yii::app()->user->getId()); ?>"><?php eT("Edit your profile");?></a>
+                    </li>
 
                     <!-- Edit your personal preferences -->
                     <li>
@@ -129,7 +135,7 @@
             <?php if ($activesurveyscount > 0): ?>
                 <li>
                     <a href="<?php echo $this->createUrl('admin/survey/sa/listsurveys/active/Y');?>">
-                        <?php echo $activesurveyscount; ?> active surveys
+                        <?php neT("{n} active survey|{n} active surveys",$activesurveyscount); ?>
                     </a>
                 </li>
             <?php endif;?>

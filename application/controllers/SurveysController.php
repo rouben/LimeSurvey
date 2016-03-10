@@ -14,10 +14,26 @@
             {
                 App()->setLanguage($lang);
             }
+<<<<<<< HEAD
 
             // Custom index page for Neill Watson
             print file_get_contents("custom-homepage.html");
 
+=======
+            else
+            {
+                App()->setLanguage(App()->getConfig('defaultlang'));
+            }
+            $oTemplate = Template::model()->getInstance(Yii::app()->getConfig("defaulttemplate"));
+            if($oTemplate->cssFramework == 'bootstrap')
+            {
+                App()->bootstrap->register();
+            }
+            $this->render('publicSurveyList', array(
+                'publicSurveys' => Survey::model()->active()->open()->public()->with('languagesettings')->findAll(),
+                'futureSurveys' => Survey::model()->active()->registration()->public()->with('languagesettings')->findAll(),
+            ));
+>>>>>>> LimeSurvey/master
         }
     }
 ?>

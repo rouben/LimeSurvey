@@ -108,56 +108,55 @@ function addinput()
     var sID=$('input[name=sid]').val();
     var gID=$('input[name=gid]').val();
     var qID=$('input[name=qid]').val();
-
     var x;
-    console.log('classes: '+$(this).parent().parent().attr('class'));
-    classes=$(this).parent().parent().attr('class').split(' ');
-
-
-    for (x in classes)
-        {
-        if (classes[x].substr(0,3)=='row'){
-            position=classes[x].substr(4);
-        }
-    }
-    console.log('position:'+position);
 
     scale_id=removechars($(this).closest('table').attr('id'));
-    newposition = Number($(this).closest('tr').parent().children().index($(this).closest('tr')))+1;
+
     languages=langs.split(';');
     sNextCode=getNextCode($(this).data('code'));
-
+    console.log('sNextCode: '+sNextCode);
     console.log('before while');
 
     sNextCode=getNextCode($(this).parent().parent().find('.code').val());
 
     console.log('sNextCode: '+sNextCode);
     console.log('languages: '+languages);
+    classes=$(this).parent().parent().attr('class').split(' ');
     for (x in classes)
+    {
+        if (classes[x].substr(0,3)=='row')
         {
-        if (classes[x].substr(0,3)=='row'){
             position=classes[x].substr(4);
         }
     }
+    console.log('position:'+position);
+    //newposition = Number($(this).closest('tr').parent().children().index($(this).closest('tr')))+1;
+    newposition = Number($('#rowcontainer').find('tr').index($(this).closest('tr')))+1;
+    console.log('newposition: '+newposition);
     info=$(this).closest('table').attr('id').split("_");
     language=info[1];
     scale_id=info[2];
-    newposition=Number(position)+1;
+
+
     languages=langs.split(';');
 
     sNextCode=getNextCode($(this).parent().parent().find('.code').val());
 
+    console.log('sNextCode: '+sNextCode);
+
     for (x in languages)
-        {
+    {
         console.log('x: '+x);
         var randomid='new'+Math.floor(Math.random()*111111);
         relbutton='';
 
         tablerow=$('#tabpage_'+languages[x]).find('#answers_'+languages[x]+'_'+scale_id+' .row_'+position);
 
-        if (x==0) {
+        if (x==0)
+        {
             $(".relevance").toggle(false);
-            if (scale_id==0) {
+            if (scale_id==0)
+            {
                 relbutton  = '<td>';
                 relbutton += '  <span class="icon-conditions text-success btntogglerelevance"></span>';
                 relbutton += '  <input style="display: none" type="text" size="20" id="relevance_'+randomid+'_'+scale_id+'" name="relevance_'+randomid+'_'+scale_id+'" class="relevance"  value="1"></input>';
@@ -165,7 +164,7 @@ function addinput()
             }
 
             // Line insertion
-            inserthtml= '<tr class="row_'+newposition+'" style="display:none;">';
+            inserthtml= '<tr id="row_'+newposition+'" class="row_'+newposition+'" style="">';
             inserthtml+='   <td style="vertical-align: middle;">';
             inserthtml+='       <span class="glyphicon glyphicon-move"></span>';
             inserthtml+='   </td>';
@@ -174,7 +173,7 @@ function addinput()
             inserthtml+='   </td>';
 
             inserthtml+='   <td style="vertical-align: middle;">';
-            inserthtml+='       <div class="col-sm-12">';
+            inserthtml+='       <div class="">';
             inserthtml+='           <input type="text" size="20" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg"  placeholder="'+htmlspecialchars(newansweroption_text)+'" value=""></input>';
             inserthtml+='       </div>';
             inserthtml+='  </td>';
@@ -189,8 +188,9 @@ function addinput()
             inserthtml+='  </td>' + relbutton + '</tr>';
         }
         else
+        {
+            if (scale_id==0)
             {
-            if (scale_id==0) {
                 relbutton ='<td>'
                 relbutton+='           <a id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'_ctrl" href="javascript:start_popup_editor(\'answer_'+languages[x]+'_'+randomid+'_'+scale_id+'\',\'[Subquestion:]('+languages[x]+')\',\''+sID+'\',\''+gID+'\',\''+qID+'\',\'editanswer\',\'editanswer\')" class="editorLink">';
                 relbutton+='               <span id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'_popupctrlena" class="btneditanswerena glyphicon glyphicon-pencil text-success"></span>';
@@ -209,24 +209,26 @@ function addinput()
                 relbutton+='           </a>';
                 relbutton+='</td>';
             }
-            inserthtml ='<tr class="row_'+newposition+'" style="display:none;">';
+            inserthtml ='<tr id="row_'+newposition+'" class="row_'+newposition+'" style="display:none;">';
             inserthtml+='   <td>&nbsp;</td>';
             inserthtml+='   <td>'+htmlspecialchars(sNextCode)+'</td>';
 
             inserthtml+='   <td style="vertical-align: middle;">';
-            inserthtml+='       <div class="col-sm-12">';
+            inserthtml+='       <div class="">';
             inserthtml+='           <input type="text" size="0" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg" placeholder="'+htmlspecialchars(newansweroption_text)+'" value="" />';
             inserthtml+='       </div>';
             inserthtml+='   </td>' + relbutton + '</tr>';
         }
         tablerow.after(inserthtml);
+        console.log("insertion");
 
         tablerow.next().find('.btnaddanswer').click(addinput);
 
         tablerow.next().find('.btndelanswer').click(deleteinput);
-        tablerow.next().find('.answer').focus(function(){
+        tablerow.next().find('.answer').focus(function()
+        {
             if ($(this).val()==newansweroption_text)
-                {
+            {
                 $(this).val('');
             }
         });
@@ -457,9 +459,9 @@ function lsbrowser()
         }
         else
         {
-            $("#labelsetpreview").html("<p class='ui-state-highlight ui-corner-all ui-notify-message'>"+strNoLabelSet+"</p>");
-            $('#btnlsreplace').addClass('ui-state-disabled');
-            $('#btnlsinsert').addClass('ui-state-disabled');
+            $("#labelsetpreview").html("<p class='alert alert-warning'>"+strNoLabelSet+"</p>");
+            $('#btnlsreplace').addClass('disabled');
+            $('#btnlsinsert').addClass('disabled');
             $('#btnlsreplace').prop( "disabled", true );
             $('#btnlsinsert').prop( "disabled", true );
         }
@@ -479,7 +481,7 @@ function lspreview()
     surveyid=$('input[name=sid]').val();
     // check if this label set is already cached
     if (!isset(labelcache[lsid]))
-        {
+    {
         $.ajax({
             url: lsdetailurl,
             dataType: 'json',
@@ -488,28 +490,47 @@ function lspreview()
             success: function(json){
                 //$("#labelsetpreview").tabs('destroy');
                 $("#labelsetpreview").empty();
-                var tabindex='';
-                var tabbody='';
+                var tabindex='<ul class="nav nav-tabs">';
+                var tabbody='<div class="tab-content">';
+                var count=0;
                 for ( x in json)
-                    {
-
+                {
                     language=json[x];
                     for (y in language)
+                    {
+                        if(count==0)
                         {
-                        tabindex=tabindex+'<li><a href="#language_'+y+'">'+language[y][1]+'</a></li>';
-                        tabbody=tabbody+"<div id='language_"+y+"'><table class='limetable'>";
+                            active="active";
+                            bodyactive="in active";
+                            count++;
+                        }
+                        else
+                        {
+                            active = bodyactive = "";
+                        }
+
+                        tabindex=tabindex+
+                            '<li role="presentation" class="'+active+'">'+
+                            '   <a data-toggle="tab" href="#language_'+y+'">'+
+                                    language[y][1]+
+                            '   </a>'+
+                            '</li>';
+
+                        tabbody=tabbody+
+                                '<div id="language_'+y+'" class="tab-page tab-pane fade '+bodyactive+'">'+
+                                '   <table class="limetable">';
                         lsrows=language[y][0];
                         tablerows='';
                         var highlight=true;
                         for (z in lsrows)
-                            {
+                        {
                             highlight=!highlight;
                             tabbody=tabbody+'<tbody><tr';
                             if (highlight==true) {
                                 tabbody=tabbody+" class='highlight' ";
                             }
                             if (lsrows[z].title==null)
-                                {
+                            {
                                 lsrows[z].title='';
                             }
                             tabbody=tabbody+'><td>'+lsrows[z].code+'</td><td>'+htmlspecialchars(lsrows[z].title)+'</td></tr><tbody>';
@@ -517,20 +538,17 @@ function lspreview()
                         tabbody=tabbody+'<thead><tr><th>'+strcode+'</th><th>'+strlabel+'</th></tr></thead></table></div>';
                     }
                 }
-                $("#labelsetpreview").append('<ul>'+tabindex+'</ul>'+tabbody);
-                labelcache[lsid]='<ul>'+tabindex+'</ul>'+tabbody;
-                $("#labelsetpreview").tabs();
-                $("#labelsetpreview").tabs( "refresh" );
+                tabindex=tabindex+'</ul>';
+                tabbody=tabbody+'</div>';
+                $("#labelsetpreview").append(tabindex+tabbody);
+                labelcache[lsid]=tabindex+tabbody;
         }}
         );
     }
     else
     {
-        //$("#labelsetpreview").tabs('destroy');
         $("#labelsetpreview").empty();
         $("#labelsetpreview").append(labelcache[lsid]);
-        $("#labelsetpreview").tabs();
-        $("#labelsetpreview").tabs( "refresh" );
     }
 
 
@@ -574,18 +592,23 @@ function transferlabels()
     var qID=$('input[name=qid]').val();
 
     surveyid=$('input[name=sid]').val();
+
     if ($(this).attr('id')=='btnlsreplace')
-        {
+    {
         var lsreplace=true;
+
     }
     else
-        {
+    {
         var lsreplace=false;
     }
 
+    console.log('lsreplace: '+lsreplace);
+
     if (lsreplace)
+    {
+        $('.answertable:eq('+scale_id+') tbody tr').each(function()
         {
-        $('.answertable:eq('+scale_id+') tbody tr').each(function(){
             aRowInfo=this.id.split('_');
             $('#deletedqids').val($('#deletedqids').val()+' '+aRowInfo[2]);
         });
@@ -601,13 +624,14 @@ function transferlabels()
             languages=langs.split(';');
             var x;
             var defaultdata_labels = null;
+
             for (x in languages)
-                {
+            {
                 lang_x_found_in_label=false;
                 var tablerows='';
                 var y;
                 for (y in json)
-                    {
+                {
                     language=json[y];
                     var lsrows = new Array();
                     //defaultdata=language[languages[0]][0];
@@ -631,7 +655,7 @@ function transferlabels()
                             {
                                 $(".relevance").toggle(false);
                                 tablerows=tablerows+
-                                '<tr class="row_'+k+'_'+scale_id+'" >'+
+                                '<tr id="row_'+k+'_'+scale_id+'" class="row_'+k+'_'+scale_id+'" >'+
                                 '   <td>'+
                                 '       <span class="glyphicon glyphicon-move text-success"></span>'+
                                 '   </td>'+
@@ -642,7 +666,7 @@ function transferlabels()
                                 '   </td>'+
 
                                 '   <td>'+
-                                '       <div class="col-sm-12">'+
+                                '       <div class="">'+
                                 '           <input type="text" size="20" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg" value="'+htmlspecialchars(lsrows[k].title)+'"></input>'+
                                 '       </div>'+
                                 '   </td>'+
@@ -661,14 +685,14 @@ function transferlabels()
                                 '</tr>';
                             }
                             else
-                                {
+                            {
                                 tablerows=tablerows+
-                                '<tr class="row_'+k+'_'+scale_id+'" >'+
+                                '<tr id="row_'+k+'_'+scale_id+'" class="row_'+k+'_'+scale_id+'">'+
                                 '   <td>&nbsp;</td>'+
                                 '   <td>'+htmlspecialchars(lsrows[k].code)+'</td>'+
 
                                 '   <td style="vertical-align: middle;">'+
-                                '       <div class="col-sm-12">'+
+                                '       <div class="">'+
                                 '           <input type="text" size="20" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg" value="'+htmlspecialchars(lsrows[k].title)+'"></input>'+
                                 '       </div>'+
                                 '   </td>'+
@@ -687,18 +711,18 @@ function transferlabels()
                     }
                 }
                 if (lang_x_found_in_label === false)
-                    {
+                {
                     lsrows=defaultdata_labels[0];
                     k=0;
                     for (k in lsrows)
-                        {
+                    {
                         tablerows=tablerows+
-                        '<tr class="row_'+k+'_'+scale_id+'" >'+
+                        '<tr id="row_'+k+'_'+scale_id+'" class="row_'+k+'_'+scale_id+'" >'+
                         '   <td>&nbsp;</td>'+
                         '   <td>'+htmlspecialchars(lsrows[k].code)+'</td>'+
 
                         '   <td style="vertical-align: middle;">'+
-                        '       <div class="col-sm-12">'+
+                        '       <div class="">'+
                         '           <input type="text" size="20" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg" value="'+htmlspecialchars(lsrows[k].title)+'"></input>'+
                         '       </div>'+
                         '   </td>'+
@@ -714,16 +738,21 @@ function transferlabels()
                         '</tr>';
                     }
                 }
-                if (lsreplace) {
-                    $('#answertable_'+languages[x]+'_'+scale_id+' tbody').empty();
+
+                $('#labelsetbrowserModal').modal('hide');
+                if (lsreplace)
+                {
+                    $('#answers_'+languages[x]+'_'+scale_id+' tbody').empty();
                 }
-                $('#answertable_'+languages[x]+'_'+scale_id+' tbody').append(tablerows);
+
+                $('#answers_'+languages[x]+'_'+scale_id+' tbody').append(tablerows);
                 // Unbind any previous events
-                $('#answertable_'+languages[x]+'_'+scale_id+' .btnaddanswer').unbind('click');
-                $('#answertable_'+languages[x]+'_'+scale_id+' .btndelanswer').unbind('click');
-                $('#answertable_'+languages[x]+'_'+scale_id+' .answer').unbind('focus');
-                $('#answertable_'+languages[x]+'_'+scale_id+' .btnaddanswer').click(addinput);
-                $('#answertable_'+languages[x]+'_'+scale_id+' .btndelanswer').click(deleteinput);
+                $('#answers_'+languages[x]+'_'+scale_id+' .btnaddanswer').unbind('click');
+                $('#answers_'+languages[x]+'_'+scale_id+' .btndelanswer').unbind('click');
+                $('#answers_'+languages[x]+'_'+scale_id+' .answer').unbind('focus');
+                $('#answers_'+languages[x]+'_'+scale_id+' .btnaddanswer').click(addinput);
+                $('#answers_'+languages[x]+'_'+scale_id+' .btndelanswer').click(deleteinput);
+
             }
             /*$('#labelsetbrowser').dialog('close');*/
             $('.tab-page:first .answertable tbody').sortable('refresh');
@@ -794,7 +823,7 @@ function quickaddlabels()
             if (x==0)
             {
                 tablerows=tablerows+
-                '<tr class="row_'+k+'" >'+
+                '<tr id="row_'+k+'" class="row_'+k+'">'+
                 '   <td>'+
                 '       <span class="glyphicon glyphicon-move text-success"></span>'+
                 '   </td>'+
@@ -811,7 +840,7 @@ function quickaddlabels()
                 '   </td>'+
 
                 '   <td style="vertical-align: middle;">'+
-                '       <div class="col-sm-12">'+
+                '       <div class="">'+
                 '           <input type="text" size="20" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg" value="'+htmlspecialchars(thisrow[parseInt(x)+1],'ENT_QUOTES')+'"></input>'+
                 '       </div>'+
                 '   </td>'+
@@ -834,12 +863,12 @@ function quickaddlabels()
                 {
 
                     tablerows=tablerows+
-                    '<tr class="row_'+k+'" >'+
+                    '<tr id="row_'+k+'" class="row_'+k+'" >'+
                     '   <td>&nbsp;</td>'+
                     '   <td>&nbsp;</td>'+
 
                     '   <td style="vertical-align: middle;">'+
-                    '       <div class="col-sm-12">'+
+                    '       <div class="">'+
                     '          <input type="text" size="20" id="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" name="answer_'+languages[x]+'_'+randomid+'_'+scale_id+'" class="answer form-control input-lg" value="'+htmlspecialchars(thisrow[parseInt(x)+1],'ENT_QUOTES')+'"></input>'+
                     '       </div>'+
                     '   </td>'+

@@ -236,7 +236,7 @@ function createChart($iQuestionID, $iSurveyID, $type=null, $lbl, $gdata, $grawda
             while (isset ($gdata[$i]))
             {
                 $aHelperArray=array_keys($lbl);
-                if ($gdata[$i] == 0 || ($sQuestionType == "O" && substr($aHelperArray[$i],0,strlen($sLanguageCode->gT("Comments")))==$sLanguageCode->gT("Comments")))
+                if ($gdata[$i] == 0 || ($sQuestionType == "O" && substr($aHelperArray[$i],0,strlen(gT("Comments")))==gT("Comments")))
                 {
                     array_splice ($gdata, $i, 1);
                 }
@@ -1236,14 +1236,15 @@ class statistics_helper {
         }
 
         // NICE SIMPLE SINGLE OPTION ANSWERS
+        /*
+        TO DEBUG QUESTION TYPES FIRSTLETTER, UNCOMMENT THOSE LINES
         elseif(!isset($fieldmap[$rt]))
         {
             echo "problem, wrong question type for $rt ; $firstletter"; die();
-        }
+        }*/
         else
         {
             //search for key
-            //var_dump($firstletter); die();
             $fielddata=$fieldmap[$rt];
 
             //get SGQA IDs
@@ -1613,7 +1614,6 @@ class statistics_helper {
         $ColumnName_RM=array();
         foreach ($outputs['alist'] as $al)
         {
-            //picks out answer list ($outputs['alist']/$al)) that come from the multiple list above
             if (isset($al[2]) && $al[2])
             {
                 //handling for "other" option
@@ -1621,14 +1621,10 @@ class statistics_helper {
                 {
                     if($outputs['qtype']=='!' || $outputs['qtype']=='L')
                     {
-                        // It is better for single choice question types to filter on the number of '-oth-' entries, than to
-                        // just count the number of 'other' values - that way with failing Javascript the statistics don't get messed up
-                        /* This query selects a count of responses where "other" has been selected */
                         $query = "SELECT count(*) FROM {{survey_$surveyid}} WHERE ".Yii::app()->db->quoteColumnName(substr($al[2],0,strlen($al[2])-5))."='-oth-'";
                     }
                     else
                     {
-                        //get data - select a count of responses where no answer is provided
                         $query = "SELECT count(*) FROM {{survey_$surveyid}} WHERE ";
                         $query .= ($sDatabaseType == "mysql")?  Yii::app()->db->quoteColumnName($al[2])." != ''" : "NOT (".Yii::app()->db->quoteColumnName($al[2])." LIKE '')";
                     }
@@ -1682,8 +1678,10 @@ class statistics_helper {
             }    //end if -> alist set
             else
             {
+
                 if ($al[0] != "")
                 {
+
                     //get more data
                     $sDatabaseType = Yii::app()->db->getDriverName();
                     if ($sDatabaseType == 'mssql' || $sDatabaseType == 'sqlsrv' || $sDatabaseType == 'dblib')
@@ -1745,6 +1743,7 @@ class statistics_helper {
             //"Answer" means that we show an option to list answer to "other" text field
             elseif ($al[0] === gT("Other") || $al[0] === "Answer" || ($outputs['qtype'] === "O" && $al[0] === gT("Comments")) || $outputs['qtype'] === "P")
             {
+
                 if ($outputs['qtype'] == "P") $sColumnName = $al[2]."comment";
                 else  $sColumnName = $al[2];
                 $ColumnName_RM[]=$sColumnName;
@@ -1767,6 +1766,7 @@ class statistics_helper {
                 */
                 elseif ($outputs['qtype'] == "S" || $outputs['qtype'] == "U" || $outputs['qtype'] == "T" || $outputs['qtype'] == "Q")
                 {
+
                     $headPDF = array();
                     $headPDF[] = array(gT("Answer"),gT("Count"),gT("Percentage"));
 
@@ -1838,11 +1838,26 @@ class statistics_helper {
                 //first check if $tempcount is > 0. If yes, $row has been modified and $tempcount has the original count.
                 if ($tempcount > -1)
                 {
-                    $lbl[wordwrap(FlattenText("$al[1]"), 25, "\n")] = $tempcount;
+                    $flatLabel = wordwrap(FlattenText("$al[1]"), 25, "\n");
+                    // If the flatten label is empty (like for picture, or HTML, etc.)
+                    // We replace it by the subquestion code
+                    if($flatLabel == '')
+                    {
+                        $flatLabel = $al[0];
+                    }
+                    $lbl[$flatLabel] = $tempcount;
+
                 }
                 else
                 {
-                    $lbl[wordwrap(FlattenText("$al[1]"), 25, "\n")] = $row;
+                    $flatLabel = wordwrap(FlattenText("$al[1]"), 25, "\n");
+                    // If the flatten label is empty (like for picture, or HTML, etc.)
+                    // We replace it by the subquestion code
+                    if($flatLabel == '')
+                    {
+                        $flatLabel = $al[0];
+                    }
+                    $lbl[$flatLabel] = $row;
                 }
 
 
@@ -1884,58 +1899,6 @@ class statistics_helper {
                     }    //end while (data available)
 
                 }    //end if -> noncompleted checked
-
-                //noncompleted is NOT checked
-                else
-                {
-                    /*
-                    //calculate total number of incompleted records
-                    $TotalIncomplete = $results - $TotalCompleted;
-
-                    //output
-                    if ((incompleteAnsFilterState() != "complete"))
-                    {
-                        $fname=gT("Not completed or Not displayed");
-                    }
-                    else
-                    {
-                        $fname=gT("Not displayed");
-                    }
-
-                    //we need some data
-                    if ($results > 0)
-                    {
-                        //calculate percentage
-                        $gdata[] = ($TotalIncomplete/$results)*100;
-                    }
-
-                    //no data :(
-                    else
-                    {
-                        $gdata[] = "N/A";
-                    }
-
-                    //put data of incompleted records into array
-                    $grawdata[]=$TotalIncomplete;
-
-                    //put question title ("Not completed") into array
-                    $label[]= $fname;
-
-                    //put the code ("Not completed") into the array
-                    $justcode[]=$fname;
-
-                    //edit labels and put them into another array
-                    if ((incompleteAnsFilterState() != "complete"))
-                    {
-                        $lbl[wordwrap(flattenText(gT("Not completed or Not displayed")), 20, "\n")] = $TotalIncomplete;
-                    }
-                    else
-                    {
-                        $lbl[wordwrap(flattenText(gT("Not displayed")), 20, "\n")] = $TotalIncomplete;
-                    }
-                    */
-                }    //end else -> noncompleted NOT checked
-
             }
 
             // For multi question type, we have to check non completed with ALL sub question set to NULL
@@ -2012,6 +1975,7 @@ class statistics_helper {
             $aData['outputs'] = (isset($outputs))?$outputs:'';
             $aData['bSum'] = (isset($bSum))?$bSum:'';
             $aData['bAnswer'] = (isset($bAnswer))?$bAnswer:'';
+            $aData['usegraph'] = $usegraph;
 
             $statisticsoutput =  Yii::app()->getController()->renderPartial('/admin/export/generatestats/simplestats/_statisticsoutput_header', $aData, true);
 
@@ -2248,21 +2212,6 @@ class statistics_helper {
                     }
                     switch($outputType)
                     {
-                        case 'xls':
-                            $this->xlsRow++;
-                            $this->sheet->write($this->xlsRow,0,gT("Arithmetic mean"));
-                            $this->sheet->writeNumber($this->xlsRow,1,$am);
-                            $this->xlsRow++;
-                            $this->sheet->write($this->xlsRow,0,gT("Standard deviation"));
-                            $this->sheet->writeNumber($this->xlsRow,1,$stddev);
-                            break;
-
-                        case 'pdf':
-
-                            $tablePDF[] = array(gT("Arithmetic mean"),$am,'','');
-                            $tablePDF[] = array(gT("Standard deviation"),$stddev,'','');
-                            break;
-
                         case 'html':
                             //calculate standard deviation
                             $aData['am'] = $am;
@@ -2277,61 +2226,6 @@ class statistics_helper {
                 }
             }
 
-            if($outputType=='pdf') //XXX TODO PDF
-            {
-                //$tablePDF = array();
-                $tablePDF = array_merge_recursive($tablePDF, $footPDF);
-                $this->pdf->headTable($headPDF,$tablePDF);
-                //$this->pdf->tableintopdf($tablePDF);
-
-                //                if(isset($footPDF))
-                //                foreach($footPDF as $foot)
-                //                {
-                //                    $footA = array($foot);
-                //                    $this->pdf->tablehead($footA);
-                //                }
-                if (isset($headPDF2))
-                {
-                    $this->pdf->headTable($headPDF2,$tablePDF2);
-                }
-            }
-
-            if($outputType=='xls' && (isset($headXLS) || isset($tableXLS)))
-            {
-                if (isset($headXLS))
-                {
-                    $this->xlsRow++;
-                    $this->xlsRow++;
-                    foreach($headXLS as $aRow)
-                    {
-                        $this->xlsRow++;
-                        $iColumn=0;
-                        foreach ($aRow as $sValue)
-                        {
-                            $this->sheet->write($this->xlsRow,$iColumn,$sValue,$this->formatBold);
-                            $iColumn++;
-                        }
-                    }
-                }
-                if (isset($tableXLS))
-                {
-                    foreach($tableXLS as $aRow)
-                    {
-                        $this->xlsRow++;
-                        $iColumn=0;
-                        foreach ($aRow as $sValue)
-                        {
-                            $this->sheet->write($this->xlsRow,$iColumn,$sValue);
-                            $iColumn++;
-                        }
-                    }
-
-                }
-            }
-
-
-            if ($outputType=='html') {
-            }
 
             // _statisticsoutput_graphs.php
 
@@ -2377,6 +2271,10 @@ class statistics_helper {
                     }
 
                 }
+            }
+            else
+            {
+
             }
 
 
@@ -2451,22 +2349,26 @@ class statistics_helper {
 
                     $iCanvaHeight = $iMaxLabelLength * 3;
                     $aData['iCanvaHeight'] = ($iCanvaHeight > 150)?$iCanvaHeight:150;
-
+                    $qqid = str_replace ('#', '_', $qqid);
                     $aData['rt'] = $rt;
                     $aData['qqid'] = $qqid;
                     $aData['labels'] = $labels;
-                    //$aData['COLORS_FOR_SURVEY'] = COLORS_FOR_SURVEY;
                     $aData['charttype'] = $charttype;
                     $aData['sChartname'] = '';
                     $aData['grawdata'] = $grawdata;
                     $aData['color'] = rand ( 0, 72 ); // random truc much
                     $aData['COLORS_FOR_SURVEY'] = $COLORS_FOR_SURVEY;
-
+                    // Output graph
                     $statisticsoutput .=  Yii::app()->getController()->renderPartial('/admin/export/generatestats/simplestats/_statisticsoutput_graphs', $aData, true);
 
                 }
-                $statisticsoutput .= "</div><br /> \n";
+                else
+                {
+                    $statisticsoutput .=  Yii::app()->getController()->renderPartial('/admin/export/generatestats/simplestats/_statisticsoutput_nograph', array(), true);
+                }
+                $statisticsoutput .= "</div>\n";
             }
+
 
             return array("statisticsoutput"=>$statisticsoutput, "pdf"=>$this->pdf, "astatdata"=>$astatdata);
     }
@@ -2599,6 +2501,7 @@ class statistics_helper {
                 }
                 else
                 {
+
                     $query = "SELECT count(*) FROM {{survey_$surveyid}} WHERE " . Yii::app()->db->quoteColumnName($al[2])." =";
 
                     //ranking question?
@@ -2645,12 +2548,18 @@ class statistics_helper {
                         . "cast(".Yii::app()->db->quoteColumnName($rt)." as varchar) = '' "
                         . "OR cast(".Yii::app()->db->quoteColumnName($rt)." as varchar) = ' ' )";
                     }
-                    else
-                        //                $query = "SELECT count(*) FROM {{survey_$surveyid}} WHERE (".sanitize_int($rt)." IS NULL "
+                    elseif ($sDatabaseType == 'pgsql') {
+                        $query = "SELECT count(*) FROM {{survey_$surveyid}} WHERE ( "
+                        //                                    . "OR ".sanitize_int($rt)." = '' "
+                        . " ".Yii::app()->db->quoteColumnName($rt)."::text = '' "
+                        . "OR ".Yii::app()->db->quoteColumnName($rt)."::text = ' ') ";
+                    }
+                    else {
                         $query = "SELECT count(*) FROM {{survey_$surveyid}} WHERE ( "
                         //                                    . "OR ".sanitize_int($rt)." = '' "
                         . " ".Yii::app()->db->quoteColumnName($rt)." = '' "
                         . "OR ".Yii::app()->db->quoteColumnName($rt)." = ' ') ";
+                    }
                 }
 
             }
@@ -2899,11 +2808,27 @@ class statistics_helper {
             //first check if $tempcount is > 0. If yes, $row has been modified and $tempcount has the original count.
             if ($tempcount > -1)
             {
-                $lbl[wordwrap(FlattenText("$al[1]"), 25, "\n")] = $tempcount;
+                $flatLabel = wordwrap(FlattenText("$al[1]"), 25, "\n");
+                // If the flatten label is empty (like for picture, or HTML, etc.)
+                // We replace it by the subquestion code
+                if($flatLabel == '')
+                {
+                    $flatLabel = $al[0];
+                }
+                $lbl[$flatLabel] = $tempcount;
+
             }
             else
             {
-                $lbl[wordwrap(FlattenText("$al[1]"), 25, "\n")] = $row;
+                $flatLabel = wordwrap(FlattenText("$al[1]"), 25, "\n");
+                // If the flatten label is empty (like for picture, or HTML, etc.)
+                // We replace it by the subquestion code
+                if($flatLabel == '')
+                {
+                    $flatLabel = $al[0];
+                }
+
+                $lbl[$flatLabel] = $row;
             }
 
 
@@ -2987,11 +2912,28 @@ class statistics_helper {
                 //edit labels and put them into another array
                 if ((incompleteAnsFilterState() != "complete"))
                 {
-                    $lbl[wordwrap(flattenText(gT("Not completed or Not displayed")), 20, "\n")] = $TotalIncomplete;
+                    $flatLabel = wordwrap(flattenText(gT("Not completed or Not displayed")), 20, "\n");
+                    // If the flatten label is empty (like for picture, or HTML, etc.)
+                    // We replace it by the subquestion code
+                    if($flatLabel == '')
+                    {
+                        $flatLabel = $al[0];
+                    }
+
+                    $lbl[$flatLabel] = $TotalIncomplete;
                 }
                 else
                 {
-                    $lbl[wordwrap(flattenText(gT("Not displayed")), 20, "\n")] = $TotalIncomplete;
+
+                    $flatLabel = wordwrap(flattenText(gT("Not displayed")), 20, "\n");
+                    // If the flatten label is empty (like for picture, or HTML, etc.)
+                    // We replace it by the subquestion code
+                    if($flatLabel == '')
+                    {
+                        $flatLabel = $al[0];
+                    }
+
+                    $lbl[$flatLabel] = $TotalIncomplete;
                 }
             }    //end else -> noncompleted NOT checked
         }
@@ -3659,11 +3601,12 @@ class statistics_helper {
                 $iCanvaHeight = $iMaxLabelLength * 3;
                 $aData['iCanvaHeight'] = ($iCanvaHeight > 150)?$iCanvaHeight:150;
 
+                $qqid = str_replace ('#', '_', $qqid);
                 $aData['rt'] = $rt;
                 $aData['qqid'] = $qqid;
                 $aData['labels'] = $labels;
                 //$aData['COLORS_FOR_SURVEY'] = COLORS_FOR_SURVEY;
-                $aData['charttype'] = $charttype;
+                $aData['charttype'] = (isset($charttype))?$charttype:'Bar';
                 $aData['sChartname'] = '';
                 $aData['grawdata'] = $grawdata;
                 $aData['color'] = rand ( 0, 70 );
@@ -3740,7 +3683,7 @@ class statistics_helper {
              $aData['surveyid'] = $surveyid;
              $aData['sql'] = $sql;
 
-             $sOutputHTML = "";
+             $sOutputHTML = '';
 
             //let's run through the survey
             $runthrough=$summary;
@@ -3748,9 +3691,10 @@ class statistics_helper {
             //START Chop up fieldname and find matching questions
 
             //loop through all selected questions
+            $count=0;
+            $rowOpened=0;
             foreach ($runthrough as $rt)
             {
-
                 ////Step 1: Get information about this response field (SGQA) for the summary
                 $outputs=$this->buildOutputList($rt, $language, $surveyid, $outputType, $sql, $sLanguageCode);
                 //$sOutputHTML .= $outputs['statisticsoutput']; // Nothing interesting for us in this output
@@ -3758,18 +3702,41 @@ class statistics_helper {
 
                 if (isset($outputs['alist']) && $outputs['alist']) //Make sure there really is an answerlist, and if so:
                 {
+                    $count=$count+1;
+                    if($count==1)
+                    {
+                        $sOutputHTML .= '<div class="row">';
+                        $rowOpened = 1;
+                    }
+
                     $display=$this->displaySimpleResults($outputs, $results, $rt, $outputType, $surveyid, $sql, $usegraph, $browse, $sLanguageCode);
                     $sOutputHTML .= $display['statisticsoutput'];
                     $aStatisticsData = array_merge($aStatisticsData, $display['astatdata']);
+
+                    if($count==3)
+                    {
+                        $sOutputHTML .= '</div>';
+                        $rowOpened = 0;
+                        $count=0;
+                    }
+
                 }    //end if -> collect and display results
 
 
                 //Delete Build Outputs data
                 unset($outputs);
                 unset($display);
+
+
+
             }
 
+            if($rowOpened)
+            {
+                    $sOutputHTML .= '</div>';
+            }
 
+            $sOutputHTML .= '</div>';
 
              $sGoogleMapsAPIKey = trim(Yii::app()->getConfig("googleMapsAPIKey"));
              if ($sGoogleMapsAPIKey!='')
@@ -3958,7 +3925,7 @@ class statistics_helper {
 
         $aData['results'] = $results;
         $aData['total'] = $total;
-        $aData['percent'] = $percent;
+        $aData['percent'] = (isset($percent))?$percent:''; // If nobody passed the survey
         $aData['browse'] = $bBrowse;
         $aData['surveyid'] = $surveyid;
         $aData['sql'] = $sql;

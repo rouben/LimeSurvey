@@ -56,9 +56,9 @@ function eT($sToTranslate, $sEscapeMode = 'html', $sLanguage = NULL)
  * @param integer $iCount
  * @param string $sEscapeMode
  */
-function ngT($sToTranslate, $iCount, $sEscapeMode = 'html')
+function ngT($sTextToTranslate, $iCount, $sEscapeMode = 'html')
 {
-    return quoteText(Yii::t('',$sToTranslate,$iCount),$sEscapeMode);
+    return quoteText(Yii::t('',$sTextToTranslate,$iCount),$sEscapeMode);
 }
 
 /**
@@ -67,7 +67,7 @@ function ngT($sToTranslate, $iCount, $sEscapeMode = 'html')
  * @param integer $iCount
  * @param string $sEscapeMode
  */
-function egT($sToTranslate, $iCount, $sEscapeMode = 'html')
+function neT($sToTranslate, $iCount, $sEscapeMode = 'html')
 {
     echo ngT($sToTranslate,$iCount,$sEscapeMode);
 }
@@ -216,7 +216,18 @@ function getSurveyList($returnarray=false, $surveyid=false)
         $surveynames = array();
         foreach ($surveyidresult as $result)
         {
-            $surveynames[] = array_merge($result->attributes, $result->defaultlanguage->attributes);
+            if(!empty($result->defaultlanguage))
+            {
+                $surveynames[] = array_merge($result->attributes, $result->defaultlanguage->attributes);
+            }
+            elseif(empty($bCheckIntegrity))
+            {
+                $bCheckIntegrity=true;
+                Yii::app()->setFlashMessage(
+                    CHtml::link(gT("One or more surveys seem to be broken, please check data integrity of the LimeSurvey database."),array("admin/checkintegrity"))
+                    ,
+                    'error');
+            }
         }
 
         $cached = $surveynames;
@@ -319,27 +330,22 @@ function getTemplateListWithPreviews()
 
 function getAdminThemeList()
 {
-    $standardtemplaterootdir=Yii::app()->getConfig("styledir");
-    $list_of_files = array();
-
-    if ($standardtemplaterootdir && $handle = opendir($standardtemplaterootdir))
+    $sStandardTemplateRootDir=Yii::app()->getConfig("styledir");
+    $aListOfFiles = array();
+    if ($sStandardTemplateRootDir && $pHandle = opendir($sStandardTemplateRootDir))
     {
-        while (false !== ($file = readdir($handle)))
+        while (false !== ($file = readdir($pHandle)))
         {
-            if (!is_file("$standardtemplaterootdir/$file") && $file != "." && $file != ".." && $file!=".svn")
+            if (is_dir($sStandardTemplateRootDir.DIRECTORY_SEPARATOR.$file) && is_file($sStandardTemplateRootDir.DIRECTORY_SEPARATOR.$file.DIRECTORY_SEPARATOR.'config.xml'))
             {
-                //$list_of_files[$file] = $standardtemplaterootdir.DIRECTORY_SEPARATOR.$file;
-                $oTemplateConfig = simplexml_load_file($standardtemplaterootdir.DIRECTORY_SEPARATOR.$file.'/config.xml');
-                $list_of_files[$file] = $oTemplateConfig;
+                $oTemplateConfig = simplexml_load_file($sStandardTemplateRootDir.DIRECTORY_SEPARATOR.$file.'/config.xml');
+                $aListOfFiles[$file] = $oTemplateConfig;
             }
         }
-        closedir($handle);
+        closedir($pHandle);
     }
-
-
-    ksort($list_of_files);
-
-    return $list_of_files;
+    ksort($aListOfFiles);
+    return $aListOfFiles;
 }
 
 
@@ -594,23 +600,31 @@ function getGroupSum($surveyid, $lang)
 
 
 /**
-* getMaxGroupOrder($surveyid) queries the database for the maximum sortorder of a group and returns the next higher one.
-*
-* @param mixed $surveyid
-*/
+ * Queries the database for the maximum sortorder of a group and returns the next higher one.
+ *
+ * @param string|int $surveyid
+ * @return int
+ */
 function getMaxGroupOrder($surveyid)
 {
-    $s_lang = Survey::model()->findByPk($surveyid)->language;
+    $queryResult = QuestionGroup::model()->find(array(
+        'condition' => 'sid = :sid',
+        'params' => array(':sid' => $surveyid),
+        'order' => 'group_order desc',
+        'limit' => '1'
+    ));
 
-    //$max_sql = "SELECT max( group_order ) AS max FROM ".db_table_name('groups')." WHERE sid =$surveyid AND language='{$s_lang}'" ;
-    $query = QuestionGroup::model()->find(array('order' => 'group_order desc'));
-    $current_max = !is_null($query) ? $query->group_order : '';
+    $current_max = !is_null($queryResult) ? $queryResult->group_order : "";
 
-    if($current_max!="")
+    if($current_max !== "")
     {
-        return ++$current_max ;
+        $current_max += 1;
+        return $current_max;
     }
-    else return "0" ;
+    else
+    {
+        return 0;
+    }
 }
 
 
@@ -1451,9 +1465,13 @@ function getExtendedAnswer($iSurveyID, $sFieldCode, $sValue, $sLanguage)
     {
         $fieldmap = createFieldMap($iSurveyID,'short',false,false,$sLanguage);
         if (isset($fieldmap[$sFieldCode]))
+        {
             $fields = $fieldmap[$sFieldCode];
+        }
         else
-            return false;
+        {
+            return '';
+        }
 
         // If it is a comment field there is nothing to convert here
         if ($fields['aid']=='comment') return $sValue;
@@ -1470,17 +1488,11 @@ function getExtendedAnswer($iSurveyID, $sFieldCode, $sValue, $sLanguage)
                     $sValue=convertDateTimeFormat($sValue,"Y-m-d H:i:s",$dateformatdetails['phpdate']);
                 }
                 break;
+            case 'K':
             case 'N':
-                if (trim($sValue)!='')
-                {
-                    if(strpos($sValue,".")!==false)
-                    {
+                if (trim($sValue)!='') {
+                    if (strpos($sValue,".")!==false) {
                         $sValue=rtrim(rtrim($sValue,"0"),".");
-                    }
-                    $qidattributes = getQuestionAttributeValues($fields['qid']);
-                    if($qidattributes['num_value_int_only'])
-                    {
-                        $sValue=number_format($sValue, 0, '', '');
                     }
                 }
                 break;
@@ -2653,6 +2665,9 @@ function questionAttributes($returnByName=false)
         // If you insert a new attribute please do it in correct alphabetical order!
         // Please also list the new attribute in the function &TSVSurveyExport($sid) in em_manager_helper.php,
         // so your new attribute will not be "forgotten" when the survey is exported to Excel/CSV-format!
+
+        // If you need to create a new attribute selector rendering for question advanced attribute
+        // Just add it to application/views/admin/survey/Question/advanced_settings_view
         $qattributes["alphasort"]=array(
         "types"=>"!LOWZ",
         'category'=>gT('Display'),
@@ -3571,6 +3586,29 @@ function questionAttributes($returnByName=false)
         "help"=>gT('Width of text input box'),
         "caption"=>gT('Input box width'));
 
+        $qattributes["text_input_columns"]=array(
+        "types"=>"Q",
+        'category'=>gT('Display'),
+        'sortorder'=>90,
+        'inputtype'=>'columns',
+        'default'=>'6',
+        'min'=>'1',
+        'max'=>'12',
+        "help"=>gT('Number of Bootstrap columns for the input box'),
+        "caption"=>gT('Input box columns'));
+
+        $qattributes["label_input_columns"]=array(
+        "types"=>"Q",
+        'category'=>gT('Display'),
+        'sortorder'=>90,
+        'inputtype'=>'columns',
+        'default'=>'6',
+        'min'=>'1',
+        'max'=>'12',
+        "help"=>gT('Number of Bootstrap columns for the label'),
+        "caption"=>gT('Label columns'));
+
+
         $qattributes["use_dropdown"]=array(
         "types"=>"1FO",
         'category'=>gT('Display'),
@@ -4081,7 +4119,7 @@ function SendEmailMessage($body, $subject, $to, $from, $sitename, $ishtml=false,
     }
 
 
-    require_once(APPPATH.'/third_party/phpmailer/class.phpmailer.php');
+    require_once(APPPATH.'/third_party/phpmailer/PHPMailerAutoload.php');
     $mail = new PHPMailer;
     if (!$mail->SetLanguage($defaultlang,APPPATH.'/third_party/phpmailer/language/'))
     {
@@ -4169,13 +4207,17 @@ function SendEmailMessage($body, $subject, $to, $from, $sitename, $ishtml=false,
     if ($ishtml)
     {
         $mail->IsHTML(true);
-        //$mail->AltBody = strip_tags(breakToNewline(html_entity_decode($body,ENT_QUOTES,$emailcharset))); // Use included PHPmailer system see bug #8234
+        if(strpos($body,"<html>")===false)
+        {
+            $body="<html>".$body."</html>";
+        }
+        $mail->msgHTML($body,App()->getConfig("publicdir")); // This allow embedded image if we remove the servername from image
     }
     else
     {
         $mail->IsHTML(false);
+        $mail->Body = $body;
     }
-    $mail->Body = $body;
     // Add attachments if they are there.
     if (is_array($attachments))
     {
@@ -4192,9 +4234,10 @@ function SendEmailMessage($body, $subject, $to, $from, $sitename, $ishtml=false,
             }
         }
     }
+    $mail->Subject=$subject;
 
-    if (trim($subject)!='') {$mail->Subject = "=?$emailcharset?B?" . base64_encode($subject) . "?=";}
-    if ($emailsmtpdebug>0) {
+    if ($emailsmtpdebug>0)
+    {
         ob_start();
     }
     $sent=$mail->Send();
@@ -4220,12 +4263,12 @@ function SendEmailMessage($body, $subject, $to, $from, $sitename, $ishtml=false,
 *
 * @return string  Cleaned text
 */
-function flattenText($sTextToFlatten, $keepSpan=false, $bDecodeHTMLEntities=false, $sCharset='UTF-8', $bStripNewLines=true)
+function flattenText($sTextToFlatten, $bKeepSpan=false, $bDecodeHTMLEntities=false, $sCharset='UTF-8', $bStripNewLines=true)
 {
     $sNicetext = stripJavaScript($sTextToFlatten);
     // When stripping tags, add a space before closing tags so that strings with embedded HTML tables don't get concatenated
     $sNicetext = str_replace(array('</td','</th'),array(' </td',' </th'), $sNicetext);
-    if ($keepSpan) {
+    if ($bKeepSpan) {
         // Keep <span> so can show EM syntax-highlighting; add space before tags so that word-wrapping not destroyed when remove tags.
         $sNicetext = strip_tags($sNicetext,'<span><table><tr><td><th>');
     }
@@ -5024,10 +5067,10 @@ function fixCKeditorText($str)
 
 
 /**
-* This is a helper function for getAttributeFieldNames
-*
-* @param mixed $fieldname
-*/
+ * This is a helper function for getAttributeFieldNames
+ *
+ * @param mixed $fieldname
+ */
 function filterForAttributes ($fieldname)
 {
     if (strpos($fieldname,'attribute_')===false) return false; else return true;
@@ -5722,6 +5765,7 @@ function short_implode($sDelimeter, $sHyphen, $aArray)
 */
 function includeKeypad()
 {
+    App()->getClientScript()->registerScriptFile(Yii::app()->getConfig('third_party').'jquery-keypad/jquery.plugin.min.js');
     App()->getClientScript()->registerScriptFile(Yii::app()->getConfig('third_party').'jquery-keypad/jquery.keypad.min.js');
     $localefile = Yii::app()->getConfig('rootdir').'/third_party/jquery-keypad/jquery.keypad-'.App()->language.'.js';
     if (App()->language != 'en' && file_exists($localefile))

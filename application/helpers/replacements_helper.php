@@ -25,7 +25,7 @@
 * @param bStaticReplacement - Default off, forces non-dynamic replacements without <SPAN> tags (e.g. for the Completed page)
 * @return string  Text with replaced strings
 */
-function templatereplace($line, $replacements = array(), &$redata = array(), $debugSrc = 'Unspecified', $anonymized = false, $questionNum = NULL, $registerdata = array(), $bStaticReplacement = false)
+function templatereplace($line, $replacements = array(), &$redata = array(), $debugSrc = 'Unspecified', $anonymized = false, $questionNum = NULL, $registerdata = array(), $bStaticReplacement = false, $oTemplate='')
 {
 
     /*
@@ -63,6 +63,7 @@ function templatereplace($line, $replacements = array(), &$redata = array(), $de
     'showqnumcode',
     'showxquestions',
     'sitename',
+    'sitelogo',
     'surveylist',
     'templatedir',
     'thissurvey',
@@ -135,20 +136,30 @@ function templatereplace($line, $replacements = array(), &$redata = array(), $de
      * If debug mode is on, no asset manager is used.
      *
      * oTemplate is defined in controller/survey/index
+     *
+     * If templatereplace is called from the template editor, a $oTemplate is provided.
      */
-    global $oTemplate;
-    $aCssFiles = (array) $oTemplate->config->files->css->filename;
-    $aJsFiles = (array) $oTemplate->config->files->js->filename;
+    if ($oTemplate === '')
+    {
+        $oTemplate = Template::model()->getInstance($templatename);
+    }
 
+    $aCssFiles = $oTemplate->config->files->css->filename;
+    $aJsFiles = $oTemplate->config->files->js->filename;
+    $aOtherFiles = $oTemplate->otherFiles;
+
+//var_dump($aOtherFiles); die();
     if(stripos ($line,"{TEMPLATECSS}"))
     {
-        if(!YII_DEBUG) //Asset manager off in debug mode
+        // If the template has files for css, we can't publish the files one by one, but we must publish them as a whole directory
+        // TODO : extend asset manager so it check for file modification even in directory mode
+        if(!YII_DEBUG  || count($aOtherFiles)<0 ) //Asset manager off in debug mode
         {
             foreach($aCssFiles as $sCssFile)
             {
                 if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile))
                 {
-                    Yii::app()->getClientScript()->registerCssFile( App()->getAssetManager()->publish( $oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile  ));
+                    Yii::app()->getClientScript()->registerCssFile( App()->getAssetManager()->publish( $oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile  ),$sCssFile['media']);
                 }
             }
         }
@@ -158,32 +169,21 @@ function templatereplace($line, $replacements = array(), &$redata = array(), $de
             {
                 if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile))
                 {
-                    Yii::app()->getClientScript()->registerCssFile("{$templateurl}$sCssFile");
+                    Yii::app()->getClientScript()->registerCssFile("{$templateurl}$sCssFile",$sCssFile['media']);
                 }
             }
-
         }
+        /* RTL CSS */
         if (getLanguageRTL(App()->language))
         {
             $aCssFiles = (array) $oTemplate->config->files->rtl->css->filename;
-            $aJsFiles = (array) $oTemplate->config->files->rtl->js->filename;
             if(!YII_DEBUG)
             {
-                // RTL CSS
                 foreach($aCssFiles as $sCssFile)
                 {
                     if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile))
                     {
-                        Yii::app()->getClientScript()->registerCssFile( App()->getAssetManager()->publish( $oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile  ));
-                    }
-                }
-
-                // RTL JS
-                foreach($aJsFiles as $aJsFile)
-                {
-                    if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $aJsFile))
-                    {
-                        App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( $oTemplate->path .DIRECTORY_SEPARATOR. $aJsFile ) );
+                        Yii::app()->getClientScript()->registerCssFile( App()->getAssetManager()->publish( $oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile  ),$sCssFile['media']);
                     }
                 }
             }
@@ -193,14 +193,7 @@ function templatereplace($line, $replacements = array(), &$redata = array(), $de
                 {
                     if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $sCssFile))
                     {
-                        Yii::app()->getClientScript()->registerCssFile("{$templateurl}$sCssFile");
-                    }
-                }
-                foreach($aJsFiles as $sJsFile)
-                {
-                    if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $sJsFile))
-                    {
-                        Yii::app()->getClientScript()->registerScriptFile("{$templateurl}$sJsFile");
+                        Yii::app()->getClientScript()->registerCssFile("{$templateurl}$sCssFile",$sCssFile['media']);
                     }
                 }
             }
@@ -230,6 +223,31 @@ function templatereplace($line, $replacements = array(), &$redata = array(), $de
             }
 
         }
+        /* RTL JS */
+        if (getLanguageRTL(App()->language))
+        {
+            $aJsFiles = (array) $oTemplate->config->files->rtl->js->filename;
+            if(!YII_DEBUG)
+            {
+                foreach($aJsFiles as $aJsFile)
+                {
+                    if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $aJsFile))
+                    {
+                        App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( $oTemplate->path .DIRECTORY_SEPARATOR. $aJsFile ) );
+                    }
+                }
+            }
+            else
+            {
+                foreach($aJsFiles as $sJsFile)
+                {
+                    if (file_exists($oTemplate->path .DIRECTORY_SEPARATOR. $sJsFile))
+                    {
+                        Yii::app()->getClientScript()->registerScriptFile("{$templateurl}$sJsFile");
+                    }
+                }
+            }
+        }
     }
     // surveyformat
     if (isset($thissurvey['format']))
@@ -240,8 +258,10 @@ function templatereplace($line, $replacements = array(), &$redata = array(), $de
     {
         $surveyformat = "";
     }
-
-    $surveyformat .= " bootstrap-engine ";
+    if($oTemplate->config->engine->cssframework)
+    {
+        $surveyformat .= " ".$oTemplate->config->engine->cssframework."-engine ";
+    }
 
     if ((isset(Yii::app()->session['step']) && Yii::app()->session['step'] % 2) && $surveyformat!="allinone")
     {
@@ -616,6 +636,8 @@ EOD;
         $_endtext = $thissurvey['surveyls_endtext'];
     }
 
+    $sitelogo = (!empty($oTemplate->siteLogo))?'<img src="'.App()->getAssetManager()->publish( $oTemplate->path.'/'.$oTemplate->siteLogo).'"/>':'';
+
     // Set the array of replacement variables here - don't include curly braces
     $coreReplacements = array();
     $coreReplacements['ACTIVE'] = (isset($thissurvey['active']) && !($thissurvey['active'] != "Y"));
@@ -666,6 +688,7 @@ EOD;
     $coreReplacements['SAVEMESSAGE'] = gT("Enter a name and password for this survey and click save below.")."<br />\n".gT("Your survey will be saved using that name and password, and can be completed later by logging in with the same name and password.")."<br /><br />\n<span class='emailoptional'>".gT("If you give an email address, an email containing the details will be sent to you.")."</span><br /><br />\n".gT("After having clicked the save button you can either close this browser window or continue filling out the survey.");
     $coreReplacements['SID'] = Yii::app()->getConfig('surveyID','');// Allways use surveyID from config
     $coreReplacements['SITENAME'] = isset($sitename) ? $sitename : '';  // global
+    $coreReplacements['SITELOGO'] = $sitelogo;
     $coreReplacements['SUBMITBUTTON'] = $_submitbutton;
     $coreReplacements['SUBMITCOMPLETE'] = "<strong>".gT("Thank you!")."<br /><br />".gT("You have completed answering the questions in this survey.")."</strong><br /><br />".gT("Click on 'Submit' now to complete the process and save your answers.");
     $coreReplacements['SUBMITREVIEW'] = $_strreview;
@@ -905,5 +928,4 @@ function doHtmlSaveAll($move="")
     $aSaveAllButtons[$move]=$sSaveAllButtons;
     return $aSaveAllButtons[$move];
 }
-
 // Closing PHP tag intentionally omitted - yes, it is okay

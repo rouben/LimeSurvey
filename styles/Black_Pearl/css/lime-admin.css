@@ -1698,7 +1698,7 @@ html {
   .mega-dropdown-menu > li ul > li > a:focus {
     text-decoration: none; }
 
-#mainmenu-dropdown {
+#mainmenu-dropdown, .navbar-right .dropdown-menu {
   z-index: 20002; }
 
 .footer {
@@ -3060,15 +3060,6 @@ input:focus, textarea:focus {
 
 .cke_skin_kama .cke_contents {
   width: 600px; }
-
-.em-expression {
-  font-weight: bold; }
-
-.em-function {
-  color: #071630; }
-
-.em-var-string {
-  color: #35363f; }
 
 .data-entry-explanation + tr {
   background-color: #e6e6e6; }

@@ -73,7 +73,15 @@ function loadanswers()
         // If survey come from reload (GET or POST); some value need to be found on saved_control, not on survey
         if (Yii::app()->request->getParam('loadall') == "reload")
         {
-            $oSavedSurvey=SavedControl::model()->find("identifier=:identifier AND (access_code=:access_code OR access_code=:sha256_code)",array(':identifier'=>$sLoadName,':access_code'=>md5($sLoadPass),':sha256_code'=>hash('sha256',$sLoadPass)));
+            $oSavedSurvey=SavedControl::model()->find(
+                "sid = :sid AND identifier = :identifier AND (access_code = :access_code OR access_code = :sha256_code)",
+                array(
+                    ':sid' => $surveyid,
+                    ':identifier' => $sLoadName,
+                    ':access_code' => md5($sLoadPass),
+                    ':sha256_code' => hash('sha256',$sLoadPass)
+                )
+            );
             // We don't need to control if we have one, because we do the test before
             $_SESSION['survey_'.$surveyid]['scid'] = $oSavedSurvey->scid;
             $_SESSION['survey_'.$surveyid]['step'] = ($oSavedSurvey->saved_thisstep>1)?$oSavedSurvey->saved_thisstep:1;
@@ -257,7 +265,7 @@ function makeLanguageChanger($sSelectedLanguage)
 #        }
 #        $sHTMLCode .= "</select>\n";
 
-        $sClass= "languagechanger";
+        $sClass= "languagechanger form-control";
         foreach ($aLanguages as $sLangCode => $aLanguage)
             $aListLang[$sLangCode]=html_entity_decode($aLanguage['nativedescription'], ENT_COMPAT,'UTF-8').' - '.$aLanguage['description'];
         $sSelected=$sSelectedLanguage;
@@ -813,8 +821,7 @@ function buildsurveysession($surveyid,$preview=false)
     $_SESSION['survey_'.$surveyid]['templatepath']=getTemplatePath($thissurvey['template']).DIRECTORY_SEPARATOR;
     $sTemplatePath=$_SESSION['survey_'.$surveyid]['templatepath'];
 
-    /// $oTemplate is a global variable defined in controller/survey/index
-    global $oTemplate;
+    $oTemplate = Template::model()->getInstance('', $surveyid);
     $sTemplatePath = $oTemplate->path;
     $sTemplateViewPath = $oTemplate->viewPath;
 
@@ -1899,11 +1906,18 @@ function UpdateFieldArray()
 * checkCompletedQuota() returns matched quotas information for the current response
 * @param integer $surveyid - Survey identification number
 * @param bool $return - set to true to return information, false do the quota
-* @return array - nested array, Quotas->Members->Fields, includes quota information matched in session.
+* @return array|void - nested array, Quotas->Members->Fields, includes quota information matched in session.
 */
 function checkCompletedQuota($surveyid,$return=false)
 {
-    if (!isset($_SESSION['survey_'.$surveyid]['srid']))
+    /* Check if session is set */
+    if (!isset(App()->session['survey_'.$surveyid]['srid']))
+    {
+        return;
+    }
+    /* Check is Response is already submitted : only when "do" the quota: allow to send information about quota */
+    $oResponse=Response::model($surveyid)->findByPk(App()->session['survey_'.$surveyid]['srid']);
+    if(!$return && $oResponse && !is_null($oResponse->submitdate))
     {
         return;
     }
@@ -1972,9 +1986,8 @@ function checkCompletedQuota($surveyid,$return=false)
     // Now we have all the information we need about the quotas and their status.
     // We need to construct the page and do all needed action
     $aSurveyInfo=getSurveyInfo($surveyid, $_SESSION['survey_'.$surveyid]['s_lang']);
-    $sTemplatePath=getTemplatePath($aSurveyInfo['template']);
 
-    global $oTemplate;
+    $oTemplate = Template::model()->getInstance('', $surveyid);
     $sTemplatePath = $oTemplate->path;
     $sTemplateViewPath = $oTemplate->viewPath;
 
@@ -2140,7 +2153,7 @@ function display_first_page() {
 
     $redata = compact(array_keys(get_defined_vars()));
 
-    global $oTemplate;
+    $oTemplate = Template::model()->getInstance('', $surveyid);
     $sTemplatePath = $oTemplate->path;
     $sTemplateViewPath = $oTemplate->viewPath;
     echo templatereplace(file_get_contents($sTemplateViewPath."startpage.pstpl"),array(),$redata,'frontend_helper[2757]');

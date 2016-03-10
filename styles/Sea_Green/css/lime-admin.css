@@ -1698,7 +1698,7 @@ html {
   .mega-dropdown-menu > li ul > li > a:focus {
     text-decoration: none; }
 
-#mainmenu-dropdown {
+#mainmenu-dropdown, .navbar-right .dropdown-menu {
   z-index: 20002; }
 
 .footer {
@@ -2910,7 +2910,9 @@ input[type="checkbox"]:disabled:checked:after,
   padding: 1em; }
 
 .container-fluid .ui-widget-content .ui-state-default, .container-fluid .ui-jqgrid .ui-jqgrid-bdiv {
-  padding: 0.5em; }
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
 
 .ui-dialog, .ui-jqdialog, .ui-dialog.ui-widget.ui-widget-content.ui-corner-all.ui-front.ui-dialog-buttons.ui-draggable.ui-resizable {
   background-color: #ffffff;
@@ -3060,15 +3062,6 @@ input:focus, textarea:focus {
 
 .cke_skin_kama .cke_contents {
   width: 600px; }
-
-.em-expression {
-  font-weight: bold; }
-
-.em-function {
-  color: #328637; }
-
-.em-var-string {
-  color: #35363f; }
 
 .data-entry-explanation + tr {
   background-color: #e6e6e6; }

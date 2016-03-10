@@ -2,7 +2,6 @@
    /**
     * This file render the list of groups
     */
-
 ?>
 <?php $pageSize=Yii::app()->user->getState('pageSize',Yii::app()->params['defaultPageSize']);?>
 
@@ -44,7 +43,7 @@
                                     </select>
                             </div>
 
-                            <?php echo CHtml::submitButton(gT('Search'), array('class'=>'btn btn-success')); ?>
+                            <?php echo CHtml::submitButton(gT('Search','unescaped'), array('class'=>'btn btn-success')); ?>
                             <a href="<?php echo Yii::app()->createUrl('admin/survey/sa/listquestions/surveyid/'.$surveyid);?>" class="btn btn-warning"><?php eT('Reset');?></a>
 
                         <?php $this->endWidget(); ?>
@@ -57,12 +56,61 @@
                 <div class="col-lg-12">
 
                     <?php
+                        $columns = array(
+                            array(
+                                'header' => gt('Question ID'),
+                                'name' => 'question_id',
+                                'value'=>'$data->qid',
+                            ),
+                            array(
+                                'header' => gt('Question order'),
+                                'name' => 'question_order',
+                                'value'=>'$data->question_order',
+                            ),
+                            array(
+                                'header' => gt('Code'),
+                                'name' => 'title',
+                                'value'=>'$data->title',
+                                'htmlOptions' => array('class' => 'col-md-1'),
+                            ),
+                            array(
+                                'header' => gt('Question'),
+                                'name' => 'question',
+                                'value'=>'strip_tags($data->question)',
+                                'htmlOptions' => array('class' => 'col-md-5'),
+                            ),
+                            array(
+                                'header' => gt('Question type'),
+                                'name' => 'type',
+                                'type'=>'raw',
+                                'value'=>'$data->typedesc',
+                                'htmlOptions' => array('class' => 'col-md-1'),
+                            ),
+                            array(
+                                'header' => gt('Group'),
+                                'name' => 'group',
+                                'value'=>'$data->groups->group_name',
+                            ),
+
+                            array(
+                                'header'=>'',
+                                'name'=>'actions',
+                                'type'=>'raw',
+                                'value'=>'$data->buttons',
+                                'htmlOptions' => array('class' => 'col-md-2 col-xs-1 text-right'),
+                            ),
+
+                        );
+                    ?>
+
+                    <?php
                     $this->widget('bootstrap.widgets.TbGridView', array(
                         'dataProvider' => $model->search(),
 
                         // Number of row per page selection
                         'id' => 'question-grid',
                         'type'=>'striped',
+                        'emptyText'=>gT('No questions found.'),
                         'summaryText'=>gT('Displaying {start}-{end} of {count} result(s).') .' '.sprintf(gT('%s rows per page'),
                             CHtml::dropDownList(
                                 'pageSize',
@@ -70,48 +118,8 @@
                                 Yii::app()->params['pageSizeOptions'],
                                 array('class'=>'changePageSize form-control', 'style'=>'display: inline; width: auto'))),
 
-                                'columns' => array(
-                                    array(
-                                        'header' => gt('Question ID'),
-                                        'name' => 'question_id',
-                                        'value'=>'$data->qid',
-                                        'htmlOptions' => array('class' => 'col-md-1 hidden-xs'),
-                                    ),
-                                    array(
-                                        'header' => gt('Question order'),
-                                        'name' => 'question_order',
-                                        'value'=>'$data->question_order',
-                                        'htmlOptions' => array('class' => 'col-md-2 hidden-xs'),
-                                    ),
-                                    array(
-                                        'header' => gt('Title'),
-                                        'name' => 'title',
-                                        'value'=>'$data->title',
-                                        'htmlOptions' => array('class' => 'col-xs-1'),
-                                    ),
-                                    array(
-                                        'header' => gt('Question'),
-                                        'name' => 'question',
-                                        'value'=>'strip_tags($data->question)',
-                                        'htmlOptions' => array('class' => 'col-xs-1 '),
-                                    ),
-                                    array(
-                                        'header' => gt('Group'),
-                                        'name' => 'group',
-                                        'value'=>'$data->groups->group_name',
-                                        'htmlOptions' => array('class' => 'col-md-2 '),
-                                    ),
-
-                                    array(
-                                        'header'=>'',
-                                        'name'=>'actions',
-                                        'type'=>'raw',
-                                        'value'=>'$data->buttons',
-                                        'htmlOptions' => array('class' => 'col-md-2 col-xs-1 text-right'),
-                                    ),
-
-                                ),
-                                'ajaxUpdate' => false,
+                                'columns' => $columns,
+                                'ajaxUpdate' => true,
                             ));
                             ?>
                         </div>
@@ -143,7 +151,7 @@ jQuery(document).on("change", '#pageSize', function(){
           <iframe id="frame-question-preview" src="" style="zoom:0.60" width="99.6%" height="600" frameborder="0"></iframe>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal"><?php eT("Close");?></button>
       </div>
     </div>
   </div>

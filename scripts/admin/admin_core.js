@@ -25,6 +25,18 @@ $(document).ready(function(){
     tableCellAdapters();
     linksInDialog();
 
+    if($('.htmleditor').length>0)
+    {
+        setTimeout(function(){
+            $('.cke_contents').width('580px');
+            $iframes = $('.htmleditor').find('iframe');
+            //console.log('OK '+JSON.stringify($iframes));
+            $iframes.each(function(){
+                $(this).width('500px').zIndex('10000');
+            });
+        },500);
+    }
+
     if(typeof(userdateformat) !== 'undefined')
         {
         $(".popupdate").each(function(i,e) {
@@ -72,7 +84,6 @@ $(document).ready(function(){
     /* Switch format group */
     if ($('#switchchangeformat').length>0){
         $('#switchchangeformat button').on('click', function(event, state) {
-            //alert('ok');
             $('#switchchangeformat button.active').removeClass('active');
             $(this).addClass('active');
             $value = $(this).data('value');
@@ -140,12 +151,6 @@ $(document).ready(function(){
         $(".btn:first-child .buttontext").text($(this).text());
         $('#question_type').val($(this).data('value'));
 
-        if($(this).data('module')==1){
-            $('#question_module_name').val($(this).data('modulename'));
-        }
-        else {
-            $('#question_module_name').val('');
-        }
         updatequestionattributes();
        });
 
@@ -258,6 +263,9 @@ function getToolTip(type){
 
 function updatequestionattributes()
 {
+    var type = $('#question_type').val();
+    OtherSelection(type);
+
     $('.loader').show();
     $('#advancedquestionsettings').html('');
     var selected_value = qDescToCode[''+$("#question_type_child .selected").text()];
@@ -292,7 +300,7 @@ function updatequestionattributes()
 function validatefilename (form, strmessage )
 {
     if (form.the_file.value == "") {
-        alert( strmessage );
+        $('#pleaseselectfile-popup').modal();
         form.the_file.focus();
         return false ;
     }
@@ -360,13 +368,6 @@ function ev_gecko_select_keyup_ev(Ev) {
     return true;
 }
 
-function init_gecko_select_hack() {
-    return true;
-    var selects = document.getElementsByTagName("SELECT");
-    for(i=0; i<selects.length; i++)
-        selects.item(i).addEventListener("keyup", ev_gecko_select_keyup_ev, false);
-    return true;
-}
 
 
 function getkey(e)
@@ -748,5 +749,10 @@ function addHiddenElement(theform,thename,thevalue)
 function onlyUnique(value, index, self) {
     return self.indexOf(value) === index;
 }
+
+/** For homepagesettings button edit */
+$(document).ready(function() {
+
+});
 
 // @license-end

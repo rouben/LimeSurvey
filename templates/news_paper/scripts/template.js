@@ -75,7 +75,31 @@ function correctPNG() // correctly handle PNG transparency in Win IE 5.5 & 6.
 
 $(document).ready(function(){
 
-    var outerframeDistanceFromTop = 50;
+    if($(window).width() < 800)
+    {
+        if($('.no-more-tables').length > 0)
+        {
+            $('.no-more-tables').find('td').each(function(){
+                $that = $(this);
+                $label = $that.data('title');
+                $input = $that.find('input');
+                if($input.is(':checkbox'))
+                {
+                    $that.find('label').removeClass('hide');
+                }
+                else
+                {
+                    $that.find('label').prepend($label);
+                }
+
+            });
+        }
+    }
+
+    //var outerframeDistanceFromTop = 50;
+    //topsurveymenubar
+    var topsurveymenubarHeight = $('#topsurveymenubar').innerHeight();
+    var outerframeDistanceFromTop = topsurveymenubarHeight;
     // Manage top container
     if(!$.trim($('#topContainer .container').html()))
     {
@@ -83,6 +107,10 @@ $(document).ready(function(){
     }
     else
     {
+        $('#topContainer').css({
+            top: topsurveymenubarHeight+'px',
+        });
+
         $topContainerHeight = $('#topContainer').height();
         outerframeDistanceFromTop += $topContainerHeight;
     }
@@ -156,4 +184,60 @@ $(document).ready(function(){
         });
     }
 
+    if($('.emtip').length>0)
+    {
+        // On Document Load
+        $('.emtip').each(function(){
+            if($(this).hasClass('error'))
+            {
+                $(this).parents('div.alert.questionhelp').removeClass('alert-info').addClass('alert-danger');
+                $(this).addClass('strong');
+            }
+        });
+
+        // On em change
+        $('.emtip').each(function(){
+
+            $(this).on('classChangeError', function() {
+                $parent = $(this).parent('div.alert.questionhelp');
+                $parent.removeClass('alert').removeClass('alert-info',1);
+                $parent.addClass('alert-danger',1).addClass('alert');
+
+                if ($parent.hasClass('hide-tip'))
+                {
+                    $parent.removeClass('hide-tip',1);
+                    $parent.addClass('tip-was-hidden',1);
+                }
+
+                $(this).addClass('strong');
+
+
+            });
+
+            $(this).on('classChangeGood', function() {
+                $parent = $(this).parents('div.alert.questionhelp');
+                $parent.removeClass('alert-danger');
+                $(this).removeClass('strong');
+                $parent.addClass('alert-info');
+                if ($parent.hasClass('tip-was-hidden'))
+                {
+                    $parent.removeClass('tip-was-hidden').addClass('hide-tip');
+                }
+
+            });
+        });
+    }
+
+    // Hide the menu buttons at the end of the Survey
+    if($(".hidemenubutton").length>0)
+    {
+        $('.navbar-right').hide();
+    }
+
+    // Survey list footer
+    if($('#surveyListFooter').length>0)
+    {
+        $surveyListFooter = $('#surveyListFooter');
+        $('#outerframeContainer').after($surveyListFooter);
+    }
 });

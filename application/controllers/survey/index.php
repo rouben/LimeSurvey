@@ -36,10 +36,17 @@ class index extends CAction {
         $param = $this->_getParameters(func_get_args(), $_POST);
         $surveyid = $param['sid'];
 
-        App()->getClientScript()->registerCssFile( Yii::app()->getBaseUrl(true).'/styles-public/font-awesome-43.min.css' );
+        // Font awesome
+        if(!YII_DEBUG)
+        {
+            App()->getClientScript()->registerCssFile( App()->getAssetManager()->publish( dirname(Yii::app()->request->scriptFile).'/styles-public/font-awesome-43.min.css') );
+        }
+        else
+        {
+            App()->getClientScript()->registerCssFile( Yii::app()->getBaseUrl(true).'/styles-public/font-awesome-43-debugmode.min.css' );
+        }
 
-        global $oTemplate;
-        $oTemplate = Template::model()->getTemplateConfiguration('',$surveyid);
+        $oTemplate = Template::model()->getInstance('', $surveyid);
         $this->oTemplate = $oTemplate;
 
         App()->clientScript->registerScript('sLSJavascriptVar',$sLSJavascriptVar,CClientScript::POS_HEAD);
@@ -259,7 +266,8 @@ class index extends CAction {
         }
 
         //SET THE TEMPLATE DIRECTORY
-        $thistpl = getTemplatePath($thissurvey['templatedir']);
+        $oTemplate = Template::model()->getInstance('', $surveyid);
+        $thistpl = $oTemplate->viewPath;
 
         $timeadjust = Yii::app()->getConfig("timeadjust");
         //MAKE SURE SURVEY HASN'T EXPIRED
@@ -683,15 +691,17 @@ class index extends CAction {
 
     function _niceExit(&$redata, $iDebugLine, $sTemplateDir = null, $asMessage = array())
     {
+        $oTemplate = Template::model()->getInstance('', $redata['surveyid']);
+        $asMessage[]="<input type='hidden' class='hidemenubutton'/>";
 
         if(isset($redata['surveyid']) && $redata['surveyid'] && !isset($thisurvey))
         {
             $thissurvey=getSurveyInfo($redata['surveyid']);
-            $sTemplateDir= getTemplatePath($thissurvey['template']);
+            $sTemplateDir= $oTemplate->viewPath;
         }
         else
         {
-            $sTemplateDir= getTemplatePath($sTemplateDir);
+            $sTemplateDir= $oTemplate->viewPath;
         }
         sendCacheHeaders();
 

@@ -25,12 +25,12 @@
                             ),
                         )); ?>
                         <div class="form-group">
-                            <?php echo $form->label($model, 'name', array('class'=>'col-sm-2 control-label text-right col-sm-offset-6')); ?>
-                            <div class="col-sm-1 text-right">
+                            <?php echo CHtml::label(gT('Search by group name:'), 'group_name', array('class'=>'col-sm-2 control-label text-right col-sm-offset-6')); ?>
+                            <div class="col-sm-2 text-right">
                                 <?php echo $form->textField($model, 'group_name', array('class'=>'form-control')); ?>
                             </div>
                             <div class="col-sm-2">
-                                <?php echo CHtml::submitButton(gT('Search'), array('class'=>'btn btn-success')); ?>
+                                <?php echo CHtml::submitButton(gT('Search','unescaped'), array('class'=>'btn btn-success')); ?>
                                 <a href="<?php echo Yii::app()->createUrl('admin/survey/sa/listquestiongroups/surveyid/'.$surveyid);?>" class="btn btn-warning"><?php eT('Reset');?></a>
                             </div>
                         </div>
@@ -46,8 +46,7 @@
                     $this->widget('bootstrap.widgets.TbGridView', array(
                         'id'=>'question-group-grid',
                         'dataProvider' => $model->search(),
-
-                        // Number of row per page selection
+                        'emptyText'=>gT('No questions groups found.'),
                         'summaryText'=>gT('Displaying {start}-{end} of {count} result(s).') .' '.sprintf(gT('%s rows per page'),
                             CHtml::dropDownList(
                                 'pageSize',
@@ -63,21 +62,18 @@
                             array(
                                 'header'=>gT('Group ID'),
                                 'name'=>'group_id',
-                                'value'=>'$data->gid',
-                                'htmlOptions' => array('class' => 'col-md-1'),
+                                'value'=>'$data->gid'
                             ),
 
                             // Group Order
                             array(
                                 'header'=>gT('Group order'),
                                 'name'=>'group_order',
-                                'value'=>'$data->group_order',
-                                'htmlOptions' => array('class' => 'col-md-1'),
+                                'value'=>'$data->group_order'
                             ),
 
                             // Group Name
                             array(
-                                'header'=>gT('Group name'),
                                 'name'=>'group_name',
                                 'value'=>'$data->group_name',
                                 'htmlOptions' => array('class' => 'col-md-2'),
@@ -89,7 +85,7 @@
                                 'name'=>'description',
                                 'type'=>'raw',
                                 'value'=>'$data->description',
-                                'htmlOptions' => array('class' => 'col-md-2'),
+                                'htmlOptions' => array('class' => 'col-md-6'),
                             ),
 
                             // Action buttons (defined in model)

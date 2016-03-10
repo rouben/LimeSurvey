@@ -1,6 +1,5 @@
 var formSubmitting = false;
 var changed = false;
-var setFormSubmitting = function() { formSubmitting = true; };
 $(document).ready(function(){
     var sourceItem;
     $('ol.organizer').nestedSortable({
@@ -61,3 +60,24 @@ window.onload = function() {
         }
     });
 }
+
+/**
+ * Fix big question part
+ */
+/** Update class when click on hide-button */
+$(document).on("click",".question-item .hide-button",function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).closest(".question-item").toggleClass("stretched").toggleClass("opened").toggleClass("dropup");
+});
+/** Show the button only if needed */
+/** Maybe brok if there are a lot of question : hide it when click ?*/
+$(function() {
+  $(".question-item").each(function(){
+    var element = $(this).get(0);
+    if(element.scrollHeight <= element.clientHeight)
+    {
+        $(this).find(".hide-button").addClass("invisible").css("visibility","hidden"); // See bug #10365
+    }
+  });
+});

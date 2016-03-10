@@ -8,7 +8,4 @@
             </div>
             <?php if (isset($statisticsoutput) && $statisticsoutput) { echo $statisticsoutput; } ?><br />
         </div>
-<?php
-    global $oTemplate;
-    echo templatereplace(file_get_contents($oTemplate->viewPath."/endpage.pstpl"),array(), $redata);
-?>
+        <input type='hidden' class='hidemenubutton'/>

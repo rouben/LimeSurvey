@@ -314,8 +314,10 @@ class UserAction extends Survey_Common_Action
     */
     function modifyuser()
     {
-        if (isset($_POST['uid'])) {
-            $postuserid = (int) Yii::app()->request->getPost("uid");
+
+        if ( Yii::app()->request->getParam('uid') !=''  )
+        {
+            $postuserid = (int) Yii::app()->request->getParam("uid");
             $sresult = User::model()->findAllByAttributes(array('uid' => $postuserid, 'parent_id' => Yii::app()->session['loginID']));
             $sresultcount = count($sresult);
 
@@ -327,7 +329,7 @@ class UserAction extends Survey_Common_Action
                 $aData['mur'] = $sresult;
 
                 $aData['fullpagebar']['savebutton']['form'] = 'moduserform';
-                $aData['fullpagebar']['closebutton']['url'] = 'admin/user/sa/index';
+                $aData['fullpagebar']['closebutton']['url'] = 'admin/user/sa/index';  // Close button
 
                 $this->_renderWrappedTemplate('user', 'modifyuser', $aData);
                 return;
@@ -338,7 +340,6 @@ class UserAction extends Survey_Common_Action
                 $this->getController()->redirect(array("admin/user/sa/index"));
             }
         }
-        Yii::app()->setFlashMessage(gT("You do not have sufficient rights to access this page."),'error');
         $this->getController()->redirect(array("admin/user/sa/index"));
     }
 
@@ -477,20 +478,26 @@ class UserAction extends Survey_Common_Action
     function setuserpermissions()
     {
         $iUserID = (int) Yii::app()->request->getPost('uid');
+
         // Can not update initial superadmin permissions (with findByAttributes : found the first user without parent)
         $oInitialAdmin = User::model()->findByAttributes(array('parent_id' => 0));
-        if ($oInitialAdmin && $oInitialAdmin->uid == $iUserID) // it's the original superadmin !!!
+
+        if ($oInitialAdmin && $oInitialAdmin->uid == $iUserID) // Trying to update the original superadmin !!!
         {
             Yii::app()->setFlashMessage(gT("Initial Superadmin permissions cannot be updated!"),'error');
             $this->getController()->redirect(array("admin/user/sa/index"));
         }
+
         $aBaseUserPermissions = Permission::model()->getGlobalBasePermissions();
-        if ($iUserID) {//Never update 1st admin
+        if ($iUserID)
+        {
+            //Never update 1st admin
             if(Permission::model()->hasGlobalPermission('superadmin','read'))
                 $oUser = User::model()->findByAttributes(array('uid' => $iUserID));
             else
                 $oUser = User::model()->findByAttributes(array('uid' => $iUserID, 'parent_id' => Yii::app()->session['loginID']));
         }
+
         // Check permissions
         $aBasePermissions=Permission::model()->getGlobalBasePermissions();
         if (!Permission::model()->hasGlobalPermission('superadmin','read')) // if not superadmin filter the available permissions as no admin may give more permissions than he owns
@@ -526,8 +533,8 @@ class UserAction extends Survey_Common_Action
             App()->getClientScript()->registerPackage('jquery-tablesorter');
             App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( ADMIN_SCRIPT_PATH . "userpermissions.js" ));
 
-                $aData['fullpagebar']['savebutton']['form'] = 'savepermissions';
-                $aData['fullpagebar']['closebutton']['url'] = 'admin/user/sa/index';
+            $aData['fullpagebar']['savebutton']['form'] = 'savepermissions';
+            $aData['fullpagebar']['closebutton']['url'] = 'admin/user/sa/index';  // Close button
 
             $this->_renderWrappedTemplate('user', 'setuserpermissions', $aData);
         }
@@ -565,7 +572,7 @@ class UserAction extends Survey_Common_Action
         }
 
         $aData['fullpagebar']['savebutton']['form'] = 'modtemplaterightsform';
-        $aData['fullpagebar']['closebutton']['url'] = 'admin/user/sa/index';
+        $aData['fullpagebar']['closebutton']['url'] = 'admin/user/sa/index';  // Close button
 
         $this->_renderWrappedTemplate('user', 'setusertemplates', $aData);
     }
@@ -659,10 +666,18 @@ class UserAction extends Survey_Common_Action
         $aData['sSavedLanguage'] = $user->lang;
 
         $aData['fullpagebar']['savebutton']['form'] = 'personalsettings';
-        $aData['fullpagebar']['closebutton']['url'] = 'admin/survey/sa/index';
+        $aData['fullpagebar']['saveandclosebutton']['form'] = 'personalsettings';
+        $aData['fullpagebar']['closebutton']['url'] = 'admin/survey/sa/index';  // Close button
 
         // Render personal settings view
-        $this->_renderWrappedTemplate('user', 'personalsettings', $aData);
+        if (isset($_POST['saveandclose']))
+        {
+            $this->getController()->redirect(array("admin/user/sa/index"));
+        }
+        else
+        {
+            $this->_renderWrappedTemplate('user', 'personalsettings', $aData);
+        }
     }
 
     private function _getUserNameFromUid($uid)

@@ -23,28 +23,36 @@ Yii::app()->clientScript->registerScript('editorfiletype',"editorfiletype ='".$s
     <div class="col-lg-2" id='templateleft'>
         <div style="padding-left:1em;">
             <?php eT("Standard files:"); ?><br>
-            <select class="form-control" size='6' name='editfile' onchange="javascript: window.open('<?php echo $this->createUrl("admin/templates/sa/fileredirect/templatename/".$templatename."/screenname/".urlencode($screenname)); ?>/editfile/'+escape(this.value), '_top')">
+            <select class="form-control" size='6' name='editfile' onchange="javascript: window.open('<?php echo $this->createUrl("admin/templates/sa/fileredirect/templatename/".$templatename."/screenname/".urlencode($screenname)); ?>/editfile/'+escape(this.value)+'/useindex/0/', '_top')">
                 <?php echo makeoptions($files, "name", "name", $editfile); ?>
             </select>
         </div>
 
         <div style='margin-top:1em;padding-left:1em;'>
             <?php eT("CSS & Javascript files:"); ?>
-            <br/><select  class="form-control"  size='8' name='cssfiles' onchange="javascript: window.open('<?php echo $this->createUrl("admin/templates/sa/fileredirect/templatename/".$templatename."/screenname/".urlencode($screenname)); ?>/editfile/'+escape(this.value), '_top')">
-                <?php echo makeoptions($cssfiles, "name", "name", $editfile); ?>
+            <br/>
+            <select  class="form-control"  size='8' name='cssfiles' onchange="javascript: window.open('<?php echo $this->createUrl("admin/templates/sa/fileredirect/templatename/".$templatename."/screenname/".urlencode($screenname)); ?>/editfile/'+escape(this.value)+'/useindex/true/', '_top')">
+                <?php echo makeoptionswithindex($cssfiles, "name", "name", $editfile, 'css'); ?>
+                <?php echo makeoptionswithindex($jsfiles, "name", "name", $editfile, 'js'); ?>
             </select>
+            <br/>
         </div>
     </div>
     <div class="col-lg-8 templateeditor">
         <?php echo CHtml::form(array('admin/templates/sa/templatesavechanges'), 'post', array('id'=>'editTemplate', 'name'=>'editTemplate')); ?>
 
+        <?php if(isset($_GET['editfile'])):?>
+            <input type='hidden' name='editfileindex' value='<?php echo $_GET['editfile']; ?>' />
+        <?php endif;?>
+        <?php if(isset($_GET['useindex'])):?>
+            <input type='hidden' name='useindex' value='<?php echo $_GET['useindex']; ?>' />
+        <?php endif;?>
         <input type='hidden' name='templatename' value='<?php echo $templatename; ?>' />
         <input type='hidden' name='screenname' value='<?php echo HTMLEscape($screenname); ?>' />
         <input type='hidden' name='editfile' value='<?php echo $editfile; ?>' />
         <input type='hidden' name='action' value='templatesavechanges' />
-
         <textarea name='changes' id='changes' rows='20' cols='40' data-filetype="<?php echo $sEditorFileType; ?>" class="ace <?php echo $sTemplateEditorMode; ?>" style='width:100%'>
-            <?php if (isset($editfile)) {
+        <?php if (isset($editfile)) {
             echo textarea_encode(filetext($templatename,$editfile,$templates));
         } ?>
         </textarea>
@@ -68,6 +76,8 @@ Yii::app()->clientScript->registerScript('editorfiletype',"editorfiletype ='".$s
     <div class="col-lg-2" style="overflow-x: hidden">
         <div>
             <?php eT("Other files:"); ?>
+            <br/>
+            <?php // TODO printf(gT("(path for css: %s)"), $filespath) ?>
             <?php echo CHtml::form(array('admin/templates/sa/templatefiledelete'), 'post'); ?>
             <select size='11' class="form-control" name='otherfile' id='otherfile'>
                 <?php echo makeoptions($otherfiles, "name", "name", ""); ?>
@@ -84,6 +94,13 @@ Yii::app()->clientScript->registerScript('editorfiletype',"editorfiletype ='".$s
             <input type='hidden' name='templatename' value='<?php echo $templatename; ?>' />
             <input type='hidden' name='editfile' value='<?php echo $editfile; ?>' />
             <input type='hidden' name='action' value='templatefiledelete' />
+            <?php if(isset($_GET['editfile'])):?>
+                <input type='hidden' name='editfileindex' value='<?php echo $_GET['editfile']; ?>' />
+            <?php endif;?>
+            <?php if(isset($_GET['useindex'])):?>
+                <input type='hidden' name='useindex' value='<?php echo $_GET['useindex']; ?>' />
+            <?php endif;?>
+
             </form>
         </div>
         <div style='margin-top:1em;'>
@@ -104,6 +121,13 @@ Yii::app()->clientScript->registerScript('editorfiletype',"editorfiletype ='".$s
                 <input type='hidden' name='screenname' value='<?php echo HTMLEscape($screenname); ?>' />
                 <input type='hidden' name='templatename' value='<?php echo $templatename; ?>' />
                 <input type='hidden' name='action' value='templateuploadfile' />
+                <?php if(isset($_GET['editfile'])):?>
+                    <input type='hidden' name='editfileindex' value='<?php echo $_GET['editfile']; ?>' />
+                <?php endif;?>
+                <?php if(isset($_GET['useindex'])):?>
+                    <input type='hidden' name='useindex' value='<?php echo $_GET['useindex']; ?>' />
+                <?php endif;?>
+
                 </form>
                 <?php
             }
@@ -136,13 +160,12 @@ Yii::app()->clientScript->registerScript('editorfiletype',"editorfiletype ='".$s
                     <?php }
                 else
                 { ?>
-                    <p><iframe id='previewiframe' src='<?php echo $this->createUrl('admin/templates/sa/tmp/',array('id'=>$time)); ?>' height='768' name='previewiframe' style='width:95%;background-color: white;'>Embedded Frame</iframe></p>
+                    <p>
+                        <iframe id='previewiframe' src='<?php echo $this->createUrl('admin/templates/sa/tmp/',array('id'=>$time)); ?>' height='768' name='previewiframe' style='width:95%;background-color: white;'>Embedded Frame</iframe>
+                    </p>
                     </div>
-                    <?php } ?>
-
-
-
-
+                    <?php
+                } ?>
         </div>
     </div>
 </div>

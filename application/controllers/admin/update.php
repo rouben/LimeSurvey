@@ -99,7 +99,6 @@ class update extends Survey_Common_Action
         {
             // We get the update key in the database. If it's empty, getWelcomeMessage will return subscription
             $updateKey = getGlobalSetting("update_key");
-            //$updateKey = SettingGlobal::model()->findByPk('update_key')->stg_value;
             $updateModel = new UpdateForm();
             $destinationBuild = $_REQUEST['destinationBuild'];
                $welcome = (array) $updateModel->getWelcomeMessage($updateKey, $destinationBuild);
@@ -306,7 +305,7 @@ class update extends Survey_Common_Action
                                 Yii::app()->session['next_update_check'] = $today->add(new DateInterval('PT6H'));
 
                                 // TODO : aData should contains information about each step
-                                return $this->controller->renderPartial('update/updater/steps/_final', array(), false, false);
+                                return $this->controller->renderPartial('update/updater/steps/_final', array('destinationBuild'=>$destinationBuild), false, false);
                             }
                             else
                             {

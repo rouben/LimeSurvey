@@ -6,7 +6,9 @@
 </script>
 
 <script type='text/javascript'>
-    var sCaption ='<?php eT("Survey responses",'js');?>';
+    var sCaption ='';
+    var sWarningMsg = "<?php eT("Warning", 'js') ?>";
+    var sSelectRowMsg = "<?php eT("Please select at least one response.", 'js') ?>";
     var sSelectColumns ='<?php eT("Select columns",'js');?>';
     var sRecordText = '<?php eT("View {0} - {1} of {2}",'js');?>';
     var sPageText = '<?php eT("Page {0} of {1}",'js');?>';

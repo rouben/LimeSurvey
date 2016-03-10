@@ -56,8 +56,8 @@ class GlobalSettings extends Survey_Common_Action
     {
         Yii::app()->loadHelper('surveytranslator');
 
-        //save refurl from where global settings screen is called!
-        $refurl = Yii::app()->getRequest()->getUrlReferrer();
+        // Save refurl from where global settings screen is called!
+        $refurl = Yii::app()->getRequest()->getUrlReferrer(Yii::app()->createUrl('admin'), array('globalsettings'));
 
         // Some URLs are not to be allowed to refered back to.
         // These exceptions can be added to the $aReplacements array
@@ -65,8 +65,6 @@ class GlobalSettings extends Survey_Common_Action
                              'admin/user/sa/adduser'=>'admin/user/sa/index',
                              'admin/user/sa/setusertemplates'=>'admin/user/sa/index'
                             );
-        $refurl= str_replace(array_keys($aReplacements),array_values($aReplacements),$refurl);
-        Yii::app()->session['refurl'] = htmlspecialchars($refurl); //just to be safe!
 
         $data['title'] = "hi";
         $data['message'] = "message";
@@ -96,11 +94,9 @@ class GlobalSettings extends Survey_Common_Action
             $data['excludedLanguages'] = array_diff(array_keys($data['allLanguages']), $data['restrictToLanguages']);
         }
 
-        // Boxes
-        $data['boxes'] = Boxes::model()->findAll();
-
         $data['fullpagebar']['savebutton']['form'] = 'frmglobalsettings';
-        $data['fullpagebar']['closebutton']['url'] = 'admin/';
+        $data['fullpagebar']['saveandclosebutton']['form'] = 'frmglobalsettings';
+        $data['fullpagebar']['closebutton']['url'] = 'admin/';  // Close button
 
         $this->_renderWrappedTemplate('', 'globalSettings_view', $data);
     }
@@ -229,6 +225,10 @@ class GlobalSettings extends Survey_Common_Action
         setGlobalSetting('pdflogowidth', $iPDFLogoWidth);
         setGlobalSetting('pdfheadertitle', $_POST['pdfheadertitle']);
         setGlobalSetting('pdfheaderstring', $_POST['pdfheaderstring']);
+        setGlobalSetting('bPdfQuestionFill', sanitize_int($_POST['bPdfQuestionFill']));
+        setGlobalSetting('bPdfQuestionBold', sanitize_int($_POST['bPdfQuestionBold']));
+        setGlobalSetting('bPdfQuestionBorder', sanitize_int($_POST['bPdfQuestionBorder']));
+        setGlobalSetting('bPdfResponseBorder', sanitize_int($_POST['bPdfResponseBorder']));
         setGlobalSetting('googleMapsAPIKey', $_POST['googleMapsAPIKey']);
         setGlobalSetting('googleanalyticsapikey',$_POST['googleanalyticsapikey']);
         setGlobalSetting('googletranslateapikey',$_POST['googletranslateapikey']);
@@ -243,24 +243,14 @@ class GlobalSettings extends Survey_Common_Action
         setGlobalSetting('timeadjust', $savetime);
         setGlobalSetting('usercontrolSameGroupPolicy', strip_tags($_POST['usercontrolSameGroupPolicy']));
 
-
-        // Boxes
-        for ($i=1; $i < 7; $i++)
-        {
-            $box = Boxes::model()->find(array('condition'=>'position=:positionId', 'params'=>array(':positionId'=>$i)));
-            $box->url = sanitize_html_string($_POST['box-url-'.$i]);
-            $box->title = sanitize_html_string($_POST['box-title-'.$i]);
-            $box->img = sanitize_html_string($_POST['box-img-'.$i]);
-            $box->desc = sanitize_html_string($_POST['box-desc-'.$i]);
-            $box->save();
-        }
-
-
         Yii::app()->session['flashmessage'] = $warning.gT("Global settings were saved.");
 
-	    // ref url
-        $url = htmlspecialchars_decode(Yii::app()->session['refurl']);
-        if($url){Yii::app()->getController()->redirect($url);}
+        // Redirect if user clicked save-and-close-button
+        if (isset($_POST['saveandclose']))
+        {
+            $url = Yii::app()->getRequest()->getUrlReferrer(Yii::app()->createUrl('admin'));
+            Yii::app()->getController()->redirect($url);
+        }
     }
 
     private function _checkSettings()

@@ -84,7 +84,7 @@
         {
 
             $aRules= array(
-                        array('title','required','on' => 'update, insert'),// 140207 : Before was commented, put only on update/insert ?
+                        array('title','required','on' => 'update, insert','message'=>gT('Question code may not be empty.','unescaped')),
                         array('title','length', 'min' => 1, 'max'=>20,'on' => 'update, insert'),
                         array('qid', 'numerical','integerOnly'=>true),
                         array('qid', 'unique', 'criteria'=>array(
@@ -425,6 +425,21 @@
             throw new CException("Unknown question type: '{$this->type}'");
         }
 
+        public function getTypedesc()
+        {
+            $types = self::typeList();
+            //var_dump($types[$this->type]["description"]); die();
+
+            $typeDesc = $types[$this->type]["description"];
+
+            if(YII_DEBUG)
+            {
+                $typeDesc .= ' <em>'.$this->type.'</em>';
+            }
+
+            return $typeDesc;
+        }
+
         /**
          * This function contains the question type definitions.
          * @return array The question type definitions
@@ -755,7 +770,7 @@
         $previewUrl = Yii::app()->createUrl("survey/index/action/previewquestion/sid/");
         $previewUrl .= '/'.$this->sid.'/gid/'.$this->gid.'/qid/'.$this->qid;
 
-            $editurl = Yii::app()->createUrl("admin/questions/sa/editquestion/surveyid/$this->sid/gid/$this->gid/qid/$this->qid");
+        $editurl = Yii::app()->createUrl("admin/questions/sa/editquestion/surveyid/$this->sid/gid/$this->gid/qid/$this->qid");
 
         $button = '<a class="btn btn-default open-preview"  data-toggle="tooltip" title="'.gT("Question preview").'"  aria-data-url="'.$previewUrl.'" aria-data-sid="'.$this->sid.'" aria-data-gid="'.$this->gid.'" aria-data-qid="'.$this->qid.'" aria-data-language="'.$this->language.'" href="# role="button" ><span class="glyphicon glyphicon-eye-open"  ></span></a> ';
         $button .= '<a class="btn btn-default"  data-toggle="tooltip" title="'.gT("Edit question").'" href="'.$editurl.'" role="button"><span class="glyphicon glyphicon-pencil" ></span></a>';
@@ -871,16 +886,26 @@
         $criteria = new CDbCriteria;
         $criteria->condition="t.sid=:surveyid AND t.language=:language AND parent_qid=0";
         $criteria->params=(array(':surveyid'=>$this->sid,':language'=>$this->language));
-        $criteria->join='LEFT JOIN {{groups}} AS groups ON ( groups.gid = t.gid AND t.language = groups.language )';
+        $criteria->join='LEFT JOIN {{groups}} AS groups ON ( groups.gid = t.gid AND t.language = groups.language AND groups.sid = t.sid)';
+
+
+        $criteria->compare('title', $this->title, true, 'AND');
+
+        $criteria2 = new CDbCriteria;
+        $criteria2->condition="t.sid=:surveyid AND t.language=:language AND parent_qid=0";
+        $criteria2->params=(array(':surveyid'=>$this->sid,':language'=>$this->language));
+        $criteria2->join='LEFT JOIN {{groups}} AS groups ON ( groups.gid = t.gid AND t.language = groups.language AND groups.sid = t.sid)';
+
+
 
         if($this->group_name != '')
         {
-            $criteria->addCondition('groups.group_name = :group_name');
-            $criteria->params=(array(':surveyid'=>$this->sid,':language'=>$this->language, ':group_name'=>$this->group_name));
+            $criteria->addCondition("groups.group_name = '$this->group_name'");
+            $criteria2->addCondition("groups.group_name = '$this->group_name'");
         }
 
-        $criteria->compare('title', $this->title, true, 'AND');
-        $criteria->compare('question', $this->title, true, 'OR');
+        $criteria2->compare('question', $this->title, true, 'AND');
+        $criteria->mergeWith($criteria2, 'OR');
 
         $dataProvider=new CActiveDataProvider('Question', array(
             'criteria'=>$criteria,

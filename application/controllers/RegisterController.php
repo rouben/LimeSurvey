@@ -154,10 +154,9 @@ class RegisterController extends LSYii_Controller {
         }
     }
 
-    public function getRegisterForm($iSurveyId){
-
+    public function getRegisterForm($iSurveyId)
+    {
         $aSurveyInfo=getSurveyInfo($iSurveyId,App()->language);
-        $sTemplate=getTemplatePath($aSurveyInfo['template']);
 
         // Event to replace register form
         $event = new PluginEvent('beforeRegisterForm');
@@ -197,10 +196,8 @@ class RegisterController extends LSYii_Controller {
         $aData['thissurvey'] = $aSurveyInfo;
         Yii::app()->setConfig('surveyID',$iSurveyId);//Needed for languagechanger
         $aData['languagechanger'] = makeLanguageChangerSurvey(App()->language);
-
-        /// $oTemplate is a global variable defined in controller/survey/index
-        global $oTemplate;
-        return templatereplace(file_get_contents("$oTemplate->viewPath/register.pstpl"),$aReplacement,$aData);
+        $oTemplate = Template::model()->getInstance(null, $iSurveyId);
+        return templatereplace(file_get_contents($oTemplate->viewPath . "/register.pstpl"),$aReplacement,$aData);
     }
 
     /**
@@ -260,10 +257,13 @@ class RegisterController extends LSYii_Controller {
         $aMail['message'] = $event->get('body');
         $sTo = $event->get('to');
         $sFrom = $event->get('from');
+        $sBounce = $event->get('bounce');
+
         if ($event->get('send', true) == false)
         {
-            $this->sMessage=$event->get('message', '');
-            if($event->get('error')==null){// mimic token system, set send to today
+            $this->sMessage=$event->get('message', $this->sMailMessage); // event can send is own message
+            if($event->get('error')==null) // mimic core system, set send to today
+            {
                 $today = dateShift(date("Y-m-d H:i:s"), "Y-m-d H:i", Yii::app()->getConfig('timeadjust'));
                 $oToken->sent=$today;
                 $oToken->save();

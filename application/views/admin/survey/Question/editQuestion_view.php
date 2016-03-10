@@ -1,10 +1,6 @@
+<?php PrepareEditorScript(true, $this); ?>
 <?php $this->renderPartial("./survey/Question/question_subviews/_ajax_variables", $ajaxDatas); ?>
 
-
-<?php if(isset($qTypeOutput)): ?>
-    <script type='text/javascript'><?php echo $qTypeOutput; ?></script>
-    <?php PrepareEditorScript(true, $this); ?>
-<?php endif; ?>
 
 
 <div class="side-body" id="edit-question-body">
@@ -35,7 +31,36 @@
 
                 <!-- The tabs & tab-fanes -->
                 <div class="col-lg-8 col-md-6 col-sm-5 content-right">
-                    <?php $this->renderPartial('./survey/Question/question_subviews/_tabs',array('eqrow'=>$eqrow,'addlanguages'=>$addlanguages, 'surveyid'=>$surveyid, 'gid'=>NULL, 'qid'=>NULL, 'adding'=>$adding, 'aqresult'=>$aqresult, 'action'=>$action )); ?>
+                    <?php if($adding):?>
+                        <?php
+                            $this->renderPartial(
+                                './survey/Question/question_subviews/_tabs',
+                                array(
+                                    'eqrow'=>$eqrow,
+                                    'addlanguages'=>$addlanguages,
+                                    'surveyid'=>$surveyid,
+                                    'gid'=>NULL, 'qid'=>NULL,
+                                    'adding'=>$adding,
+                                    'aqresult'=>$aqresult,
+                                    'action'=>$action
+                                )
+                            ); ?>
+                    <?php else:?>
+                        <?php
+                            $this->renderPartial(
+                                './survey/Question/question_subviews/_tabs',
+                                array(
+                                    'eqrow'=>$eqrow,
+                                    'addlanguages'=>$addlanguages,
+                                    'surveyid'=>$surveyid,
+                                    'gid'=>$gid, 'qid'=>$qid,
+                                    'adding'=>$adding,
+                                    'aqresult'=>$aqresult,
+                                    'action'=>$action
+                                )
+                            ); ?>
+
+                    <?php endif;?>
                 </div>
 
                 <!-- The Accordion -->
@@ -107,11 +132,6 @@
                                                     ?>
                                                 </label>
 
-                                                <?php $modulename = (isset($eqrow['modulename']))?$eqrow['modulename']:false;?>
-
-                                                <input type="hidden" id="question_type" name="type" value="<?php echo $eqrow['type']; ?>" />
-                                                <input type="hidden" id="question_module_name" name="module_name" value="<?php echo $modulename; ?>" />
-
                                                 <?php
                                                     foreach (getQuestionTypeList($eqrow['type'], 'array') as $key=> $questionType)
                                                     {
@@ -122,20 +142,24 @@
                                                         $groups[$questionType['group']][$key] = $questionType['description'];
                                                     }
                                                 ?>
-
+                                                <input type="hidden" id="question_type" name="type" value="<?php echo $eqrow['type']; ?>" />
                                                 <?php if(isset($selectormodeclass) && $selectormodeclass != "none" && $activated != "Y"): ?>
-
                                                     <div class="col-sm-8 btn-group" id="question_type_button" style="z-index: 1000">
                                                         <button type="button" class="btn btn-default dropdown-toggle " <?php if ($activated == "Y"){echo " disabled ";} ?>  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="z-index: 1000">
-                                                            <?php if(!$modulename):?>
-                                                                <?php foreach($groups as $name => $group):?>
-                                                                    <?php foreach($group as $type => $option):?>
-                                                                        <?php if($type == $eqrow['type']){echo '<span class="buttontext">' . $option . '</span>';}?>
-                                                                    <?php endforeach;?>
+                                                            <?php foreach($groups as $name => $group):?>
+                                                                <?php foreach($group as $type => $option):?>
+                                                                    <?php if($type == $eqrow['type']):?>
+                                                                        <span class="buttontext">
+                                                                            <?php echo $option; ?>
+                                                                            <?php if(YII_DEBUG):?>
+                                                                                <em class="small">
+                                                                                    Type code: <?php echo $type; ?>
+                                                                                </em>
+                                                                            <?php endif;?>
+                                                                        </span>
+                                                                    <?php endif; ?>
                                                                 <?php endforeach;?>
-                                                            <?php else:?>
-                                                                <span class="buttontext"><?php echo $eqrow['moduletitle'];?></span>
-                                                            <?php endif; ?>
+                                                            <?php endforeach;?>
                                                             &nbsp;&nbsp;&nbsp;
                                                             <span class="caret"></span>
                                                         </button>
@@ -148,33 +172,46 @@
                                                                 <?php foreach($group as $type => $option):?>
                                                                     <li>
                                                                         <a href="#" class="questionType" data-value="<?php echo $type; ?>" <?php if($type == $eqrow['type']){echo 'active';}?>><?php echo $option;?></a>
+                                                                        <?php if(Yii::app()->getConfig("debug")===2):?>
+                                                                            <em class="small text-info col-sm-offset-1">
+                                                                                question type code: <?php echo $type; ?>
+                                                                            </em>
+                                                                        <?php endif;?>
                                                                     </li>
                                                                 <?php endforeach;?>
 
                                                                 <li role="separator" class="divider"></li>
                                                             <?php endforeach;?>
-
-                                                            <small><?php eT('Question modules')?></small>
-                                                            <?php foreach (getQuestionModuleList($eqrow['type'], 'array') as $key => $oQuestionType):?>
-                                                                <li>
-                                                                    <!-- MODULE -->
-                                                                    <a href="#" class="questionType" data-module='1' data-modulename="<?php echo $oQuestionType->modulename; ?>" data-value="<?php echo $oQuestionType->basetype; ?>" <?php if($oQuestionType->typeid == $eqrow['modulename']){echo 'active';}?>><?php echo $oQuestionType->title; ?></a>
-                                                                </li>
-                                                            <?php endforeach;?>
                                                         </ul>
+                                                    </div>
+                                                <?php elseif(isset($selectormodeclass) && $selectormodeclass == "none" && $activated != "Y"): ?>
+                                                    <div class="col-sm-8 btn-group" id="question_type_button" style="z-index: 1000">
+                                                        <?php
+                                                            $aQtypeData=array();
+                                                            foreach (getQuestionTypeList($eqrow['type'], 'array') as $key=> $questionType)
+                                                            {
+                                                                $aQtypeData[]=array('code'=>$key,'description'=>$questionType['description'],'group'=>$questionType['group']);
+                                                            }
+                                                            echo CHtml::dropDownList(
+                                                                                        'type',
+                                                                                        'category',
+                                                                                        CHtml::listData($aQtypeData,'code','description','group'),
+                                                                                        array(
+                                                                                                'class' => 'form-control',
+                                                                                                'id'=>'question_type',
+                                                                                                'options' => array($eqrow['type']=>array('selected'=>true))
+                                                                                            )
+                                                                                        );
+                                                                                        ?>
                                                     </div>
                                                 <?php else: ?>
                                                     <div class="col-sm-8 ">
                                                         <p style="padding-top: 7px;">
-                                                            <?php if(!$modulename):?>
                                                                 <?php foreach($groups as $name => $group):?>
                                                                     <?php foreach($group as $type => $option):?>
                                                                         <?php if($type == $eqrow['type']){echo '' . $option . '';}?>
                                                                     <?php endforeach;?>
                                                                 <?php endforeach;?>
-                                                            <?php else:?>
-                                                                <span class="buttontext"><?php echo $eqrow['moduletitle'];?></span>
-                                                            <?php endif; ?>
                                                         </p>
                                                     </div>
 
@@ -196,8 +233,9 @@
                                             <div  class="form-group" id="OtherSelection">
                                                 <label class="col-sm-4 control-label"><?php eT("Option 'Other':"); ?></label>
                                                 <?php if ($activated != "Y"): ?>
-                                                    <label for='OY'><?php eT("Yes"); ?></label><input id='OY' type='radio' class='radiobtn' name='other' value='Y' <?php if ($eqrow['other'] == "Y"){ echo ' checked '; }?> />&nbsp;&nbsp;
-                                                    <label for='ON'><?php eT("No"); ?></label><input id='ON' type='radio' class='radiobtn' name='other' value='N' <?php if ($eqrow['other'] == "N" || $eqrow['other'] == "" ) { echo "checked='checked'";} ?> />
+                                                    <div class="col-sm-8">
+                                                        <?php $this->widget('yiiwheels.widgets.switch.WhSwitch', array('name' => 'other', 'value'=> $eqrow['other'] === "Y", 'onLabel'=>gT('On'),'offLabel'=>gT('Off')));?>
+                                                    </div>
                                                 <?php else:?>
                                                     <?php eT("Cannot be changed (survey is active)");?>
                                                     <input type='hidden' name='other' value="<?php echo $eqrow['other']; ?>" />
@@ -208,7 +246,7 @@
                                                 <label class="col-sm-4 control-label"><?php eT("Mandatory:"); ?></label>
                                                 <div class="col-sm-8">
                                                     <!-- Todo : replace by direct use of bootstrap switch. See statistics -->
-                                                    <?php $this->widget('yiiwheels.widgets.switch.WhSwitch', array('name' => 'mandatory', 'value'=> $eqrow['mandatory'] === "Y"));?>
+                                                    <?php $this->widget('yiiwheels.widgets.switch.WhSwitch', array('name' => 'mandatory', 'value'=> $eqrow['mandatory'] === "Y", 'onLabel'=>gT('On'),'offLabel'=>gT('Off')));?>
                                                 </div>
                                             </div>
 
@@ -228,6 +266,21 @@
                                                     <input class="form-control" type='text' id='preg' name='preg' size='50' value="<?php echo $eqrow['preg']; ?>" />
                                                 </div>
                                             </div>
+
+                                            <?php if ($adding): ?>
+                                                <div id='Position' class='form-group'>
+                                                    <label class="col-sm-4 control-label" for='pos'><?php eT("Position:"); ?></label>
+                                                    <div class="col-sm-8">
+                                                        <select class='form-control' name='questionposition' id='questionposition'>
+                                                            <option value=''><?php eT("At end"); ?></option>
+                                                            <option value='0'><?php eT("At beginning"); ?></option>
+                                                            <?php foreach ($oqresult as $oq): ?>
+                                                                <option value='<?php echo $oq->attributes['question_order'] + 1; ?>'><?php eT("After"); ?>: <?php echo $oq->attributes['title']; ?></option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>

@@ -40,20 +40,18 @@ $(document).ready(function() {
                 
     // Make the items draggable
     $('.draggable').draggable({ 
-        revert: "invalid",
-        appendTo: "body",
+        revert: 'invalid',
+        appendTo: 'body',
+        zIndex: 150,
         containment: $('.draggable-container'),
-        zindex: 150,
         opacity: 0.75
     });
             
     // Set the targets for the draggables
-    $('.droppable').droppable({ 
+    // Droppable into first and second column
+    $('.droppable-csv, .droppable-new').droppable({ 
         hoverClass: 'target-hover', 
         accept: '.draggable',
-        over: function(event, ui) {
-            adjustHeights();
-        },
         drop: function(event, ui) {
                 
             // Physically  move the draggable to the target (the plugin just visually moves it)
@@ -81,10 +79,13 @@ $(document).ready(function() {
                 $('input[type="text"]', newDraggable).remove();
                 $(newDraggable).text($(newDraggable).attr('data-name'));
             }        
+
             // Dropped in new attributes
             if($(this).hasClass('newcreate')) { 
-                $(newDraggable).html($(newDraggable).attr('id').replace('cs_',''));
-                $(newDraggable).prepend('<input type="text" id="td_'+$(newDraggable).attr('id')+'" value=\"'+$(newDraggable).attr('data-name')+'\">');
+                newDraggable.html(newDraggable.attr('id').replace('cs_',''));
+                var id = newDraggable.attr('id').replace(/ /g, '');
+                var name = newDraggable.attr('data-name');
+                newDraggable.prepend('<input type="text" id="td_' + id + '" value="' + name + '">');
             }  
                         
             // Reset the mappable attribute classes 
@@ -95,6 +96,43 @@ $(document).ready(function() {
             
             adjustHeights();
         } 
+    });
+
+    // The area to map CSV attributes to existent participant attributes
+    $('.droppable-map').droppable({
+        hoverClass: 'target-hover', 
+        accept: '.draggable',
+        drop: function(event, ui) {
+
+            // Insert nice arrow
+            $(this).find('.col-sm-6:first-child').append('<span class="fa fa-arrows-h csvatt-arrow"></span>');
+
+            // Physically  move the draggable to the target (the plugin just visually moves it)
+            // Need to use a clone for this to fake out iPad
+            var newDraggable = $(ui.draggable).clone();
+            newDraggable.appendTo(this);
+            $(ui.draggable).remove();
+
+            // Don't allow user to drop more attributes here
+            $(this).droppable('disable');
+
+            // Fix CSS
+            newDraggable.removeClass('ui-draggable-dragging').css({
+                'left': '0',
+                'top': '0',
+                'z-index': '',
+                'opacity': 1
+            });
+
+            // Remove the text input if dropped out of the new attributes column
+            if(!$(this).hasClass('newcreate') && $('input[type="text"]', newDraggable).length > 0) { 
+                $('input[type="text"]', newDraggable).remove();
+                $(newDraggable).text($(newDraggable).attr('data-name'));
+            }        
+
+            newDraggable.wrap("<div class='col-sm-6'></div>");
+
+        }
     });
     
 
@@ -114,23 +152,39 @@ $(document).ready(function() {
         }
     });
 
+    // Click Move all fields to created column (mid column)
+    $('#move-all').click(function () {
+        $('.droppable-csv .csv-attribute-item').each(function(i, elem) {
+            var $elem = $(elem);
+            $elem.html($elem.attr('id').replace('cs_',''));
+            var id = $elem.attr('id').replace(/ /g, '');
+            var name = $elem.attr('data-name');
+            $elem.prepend('<input type="text" id="td_' + id + '" value="' + name + '">');
+            $elem.detach().appendTo('.newcreate');
+            adjustHeights();
+        });
+    });
+
+    // Click Continue
     $('#attmap').click(function(){
         var anewcurrentarray = {};
-        newcurrentarray = new Array();
-        $('#newcreated .attribute-item').each(function(i) {
+        var newcurrentarray = [];
+        $('#newcreated .csv-attribute-item').each(function(i) {
             newcurrentarray.push($(this).attr('id'));
         });
         $.each(newcurrentarray, function(index,value) {
 			if(value[0]=='c') {
-                anewcurrentarray[value.substring(3)] = $("#td_"+value).val();
+                var id = value.replace(/ /g, '');
+                anewcurrentarray[value.substring(3)] = $("#td_" + id).val();
             }
         });
         
         var mappedarray = {};
         cpdbattarray = new Array();
-        $('#centralattribute .attribute-item').each(function(i) {
+        $('#centralattribute .csv-attribute-item').each(function(i) {
             cpdbattarray.push($(this).attr('id'));
         });
+
         $.each(cpdbattarray, function(index,value) {
             if(value[0]=='c' && value[1]=='s') {
                 mappedarray[cpdbattarray[index-1].substring(2)] = value.substring(3);

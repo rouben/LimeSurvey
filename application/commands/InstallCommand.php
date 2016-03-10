@@ -37,7 +37,7 @@
             switch ($this->connection->driverName) {
                 case 'mysql':
                 case 'mysqli':
-                    $this->connection->createCommand("ALTER DATABASE ". $this->connection->quoteTableName($this->getDBConnectionStringProperty('dbname')) ." DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;")->execute();
+                    $this->connection->createCommand("ALTER DATABASE ". $this->connection->quoteTableName($this->getDBConnectionStringProperty('dbname')) ." DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")->execute();
                     $sql_file = 'mysql';
                     break;
                 case 'pgsql':
@@ -74,6 +74,9 @@
             ));
         }
 
+        /**
+         * @param string $sFileName
+         */
         function _executeSQLFile($sFileName)
         {
             echo   $sFileName;
@@ -112,6 +115,9 @@
 
         }
 
+        /**
+         * @param string $sProperty
+         */
         function getDBConnectionStringProperty($sProperty, $connectionString = null)
         {
             if (!isset($connectionString))
@@ -145,7 +151,7 @@
                 {
                     case 'mysqli':
                     case 'mysql':
-                        $this->connection->createCommand("CREATE DATABASE `$sDatabaseName` DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci")->execute();
+                        $this->connection->createCommand("CREATE DATABASE `$sDatabaseName` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")->execute();
                         break;
                     case 'dblib':
                     case 'mssql':

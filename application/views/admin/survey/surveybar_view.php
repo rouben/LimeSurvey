@@ -4,9 +4,11 @@
  * Used for all survey editing action, and group / questions lists.
  */
 ?>
+
+
 <div class='menubar surveybar' id="surveybarid">
     <div class='row container-fluid'>
-        <div class="col-md-12 col-xs-6">
+        <div class="col-md-8 col-xs-6">
 
             <!-- Add a new group -->
             <?php if(isset($surveybar['buttons']['newgroup'])):?>
@@ -84,14 +86,16 @@
 
                     <!-- activate expired survey -->
                     <?php if($expired) : ?>
-                        <span class="btntooltip" data-toggle="tooltip" data-placement="bottom" title="<?php eT("This survey is currently active."); ?>" style="display: inline-block" data-toggle="tooltip" data-placement="bottom" title="<?php eT('This survey is active but expired.'); ?>">
-                            <button type="button" class="btn btn-success  btntooltip" disabled="disabled">
+                        <span class="btntooltip" style="display: inline-block" data-toggle="tooltip" data-placement="bottom" title="<?php eT('This survey is active but expired.'); ?>">
+                            <button type="button" class="btn btn-success btntooltip" disabled="disabled">
+                                <span class="fa fa-ban">&nbsp;</span>
                                 <?php eT("Activate this survey"); ?>
                             </button>
                         </span>
                     <?php elseif($notstarted) : ?>
-                        <span class="btntooltip" data-toggle="tooltip" data-placement="bottom" title="<?php eT("This survey is currently active."); ?>" style="display: inline-block" data-toggle="tooltip" data-placement="bottom" title='<?php eT("This survey is active but has a start date."); ?>'>
-                            <button type="button" class="btn btn-success  btntooltip" disabled="disabled" >
+                        <span class="btntooltip" style="display: inline-block" data-toggle="tooltip" data-placement="bottom" title='<?php eT("This survey is active but has a start date."); ?>'>
+                            <button type="button" class="btn btn-success btntooltip" disabled="disabled" >
+                                <span class="fa fa-clock-o">&nbsp;</span>
                                 <?php eT("Activate this survey"); ?>
                             </button>
                         </span>
@@ -546,11 +550,23 @@
 
 
             <?php endif;?>
+            <?php if(isset($surveybar['importquestion'])):?>
+                <a class="btn btn-default" href="<?php echo Yii::App()->createUrl('admin/questions/sa/importview/surveyid/'.$surveyid);?>" role="button">
+                    <span class="icon-import"></span>
+                    <?php eT('Import a question'); ?>
+                </a>
+            <?php endif;?>
 
+            <?php if(isset($surveybar['importquestiongroup'])):?>
+                <a class="btn btn-default" href="<?php echo Yii::App()->createUrl('admin/questiongroups/sa/importview/surveyid/'.$surveyid);?>" role="button">
+                    <span class="icon-import"></span>
+                    <?php eT('Import a group'); ?>
+                </a>
+            <?php endif;?>
         </div>
 
         <!-- right action buttons -->
-        <div class="col-md-offset-8 col-md-4 text-right">
+        <div class=" col-md-4 text-right">
             <?php if(isset($surveybar['savebutton']['form'])):?>
 
                 <!-- Save -->
@@ -559,8 +575,8 @@
                     <?php eT("Save");?>
                 </a>
 
+                <!-- Save and close -->
                 <?php if(isset($surveybar['saveandclosebutton'])):?>
-                    <!-- Save and close -->
                     <a class="btn btn-default" href="#" role="button" id='save-and-close-button'>
                         <span class="glyphicon glyphicon-saved"></span>
                         <?php eT("Save and close");?>
@@ -568,9 +584,8 @@
                 <?php endif; ?>
             <?php endif;?>
 
+            <!-- Close -->
             <?php if(isset($surveybar['closebutton']['url'])):?>
-
-                <!-- Close -->
                 <a class="btn btn-danger" href="<?php echo $surveybar['closebutton']['url']; ?>" role="button">
                     <span class="glyphicon glyphicon-close"></span>
                     <?php eT("Close");?>

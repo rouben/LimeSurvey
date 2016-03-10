@@ -12,6 +12,15 @@ if (!file_exists(dirname(__FILE__) .  '/config.php')) {
     $userConfig = require(dirname(__FILE__) . '/config.php');
 }
 @date_default_timezone_set(@date_default_timezone_get());
+
+if (function_exists('mb_internal_encoding')) {
+    // Needed to substring arabic etc
+    mb_internal_encoding('UTF-8');
+}
+else {
+    // Do nothing, will be checked in installation
+}
+
 $internalConfig = array(
     'basePath' => dirname(dirname(__FILE__)),
 
@@ -30,6 +39,16 @@ $internalConfig = array(
         'vendor.twbs.bootstrap.dist',
     ),
 
+    'modules'=>array(
+            'gii'=>array(
+                'class'=>'system.gii.GiiModule',
+                'password'=>'toto',
+                // 'ipFilters'=>array(...a list of IPs...),
+                // 'newFileMode'=>0666,
+                // 'newDirMode'=>0777,
+            ),
+        ),
+
     'params'=>array(
         'defaultPageSize'=>10	,
         'pageSizeOptions'=>array(5=>5,10=>10,20=>20,50=>50,100=>100),
@@ -42,15 +61,15 @@ $internalConfig = array(
         'application.controllers.*',
         'application.modules.*',
 
-    	'bootstrap.helpers.*',
-    	'bootstrap.widgets.*',
-    	'bootstrap.behaviors.*',
-    	'yiiwheels.widgets.select2.WhSelect2',
+        'bootstrap.helpers.*',
+        'bootstrap.widgets.*',
+        'bootstrap.behaviors.*',
+        'yiiwheels.widgets.select2.WhSelect2',
 
     ),
     'preload' => array ('log'),
     'components' => array(
-	  // yiistrap configuration
+      // yiistrap configuration
         'bootstrap' => array(
             'class' => 'bootstrap.components.TbApi',
         ),
@@ -122,7 +141,10 @@ $internalConfig = array(
         'pluginManager' => array(
             'class' => "\\ls\\pluginmanager\\PluginManager",
             'api' => "\\ls\\pluginmanager\\LimesurveyApi"
-        )
+        ),
+        'format'=>array(
+            'class'=>'application.extensions.CustomFormatter'
+        ),
     )
 );
 

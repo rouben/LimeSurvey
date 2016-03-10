@@ -348,7 +348,7 @@ class SurveyRuntimeHelper {
         $LEMsessid = 'survey_' . $surveyid;
         $this->setJavascriptVar($surveyid);
 
-        global $oTemplate;
+        $oTemplate = Template::model()->getInstance('', $surveyid);
         $sTemplatePath = $oTemplate->path;
         $sTemplateViewPath = $oTemplate->viewPath;
 
@@ -443,7 +443,7 @@ class SurveyRuntimeHelper {
                 elseif (isset($thissurvey['showwelcome']) && $thissurvey['showwelcome'] == 'N')
                 {
                     $moveResult = LimeExpressionManager::NavigateForwards();
-                    //$_SESSION[$LEMsessid]['step']=1;
+                    $_SESSION[$LEMsessid]['step'] = 1;
                 }
             }
             elseif($surveyid != LimeExpressionManager::getLEMsurveyId())
@@ -799,7 +799,7 @@ class SurveyRuntimeHelper {
 
                     if (trim(str_replace(array('<p>','</p>'),'',$thissurvey['surveyls_endtext'])) == '')
                     {
-                        $completed = "<br /><span class='success'>" . gT("Thank you!") . "</span><br /><br />\n\n"
+                        $completed = "<br /><input type='hidden' class='hidemenubutton'/><span class='success'>" . gT("Thank you!") . "</span><br /><br />\n\n"
                         . gT("Your survey responses have been recorded.") . "<br /><br />\n";
                     }
                     else
@@ -1248,7 +1248,7 @@ class SurveyRuntimeHelper {
             echo templatereplace(file_get_contents($sTemplateViewPath."startgroup.pstpl"), array(), $redata);
             echo "\n";
 
-            if (!$previewquestion && trim($redata['groupdescription'])=="")
+            if (!$previewquestion && trim($redata['groupdescription'])!="")
             {
                 echo templatereplace(file_get_contents($sTemplateViewPath."groupdescription.pstpl"), array(), $redata);
             }

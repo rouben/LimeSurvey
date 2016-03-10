@@ -3,6 +3,7 @@
  * Login Form
  */
 ?>
+<noscript>If you see this you have probably JavaScript deactivated. LimeSurvey does not work without Javascript being activated in the browser!</noscript>
 <div class="container-fluid welcome">
     <div class="row text-center">
         <div class="col-lg-3 col-lg-offset-4 col-sm-6 col-sm-offset-3">
@@ -117,7 +118,7 @@
                     <div class="row login-submit login-content">
                         <div class="col-lg-12">
                                 <p><input type='hidden' name='action' value='login' />
-                                    <button type="submit" class="btn btn-default" name='login_submit' value='<?php eT("Login"); ?>' >Submit</button><br />
+                                    <button type="submit" class="btn btn-default" name='login_submit' value='login'><?php eT('Log in');?></button><br />
                                     <br/>
                                     <?php
                                     if (Yii::app()->getConfig("display_user_password_in_email") === true)

@@ -257,9 +257,7 @@ class Survey_Common_Action extends CAction
             //// TODO : check what is doing exactly this function. (application/helpers/expressions/em_manager_helper.php)
             //// If it's about initialiazing global variables, should be removed and parsed in right controllers.
             //// But it seems that it's just useless.
-            LimeExpressionManager::StartProcessingPage(false, Yii::app()->baseUrl,true);  // so can click on syntax highlighting to edit questions
-
-            $oSurvey = $aData['oSurvey'] = Survey::model()->findByPk($aData['surveyid']);
+            LimeExpressionManager::StartProcessingPage(false, Yii::app()->baseUrl);  // so can click on syntax highlighting to edit questions
 
             $this->_titlebar($aData);
 
@@ -443,7 +441,6 @@ class Survey_Common_Action extends CAction
     * @global string $surveyid
     * @global string $setfont
     * @global string $imageurl
-    * @param int $surveyid
     * @return string $adminmenu
     */
     public function _showadminmenu()
@@ -452,20 +449,20 @@ class Survey_Common_Action extends CAction
         if( !Yii::app()->user->isGuest )
         {
             // Default password notification
-            if (Yii::app()->session['pw_notify'] && Yii::app()->getConfig("debug")<2)
+            if (Yii::app()->session['pw_notify'] && Yii::app()->getConfig("debug") < 2)
+            {
                 Yii::app()->session['flashmessage'] = gT("Warning: You are still using the default password ('password'). Please change your password and re-login again.");
+            }
 
             // Count active survey
-            $model =  new Survey('search');
-            $model->active = 'Y';
-            $aData['dataForConfigMenu']['activesurveyscount'] = $aData['activesurveyscount'] = $model->search()->itemCount;
+            $aData = array();
+            $aData['dataForConfigMenu']['activesurveyscount'] = $aData['activesurveyscount'] = Survey::model()->count("active = 'Y'");
 
             // Count survey
-            $model->active = '';
-            $aData['dataForConfigMenu']['surveyscount'] = $model->search()->itemCount;
+            $aData['dataForConfigMenu']['surveyscount'] = Survey::model()->count();
 
             // Count user
-            $aData['dataForConfigMenu']['userscount'] = count(User::model()->findAll());
+            $aData['dataForConfigMenu']['userscount'] = User::model()->count();
 
             // Count tokens and deactivated surveys
             $tablelist = Yii::app()->db->schema->getTableNames();
@@ -525,13 +522,12 @@ class Survey_Common_Action extends CAction
 
     function _tokenbar($aData)
     {
-        //var_dump($aData['token_bar']);
         if( isset($aData['token_bar']) ) {
 
             if(isset($aData['token_bar']['closebutton']['url']))
             {
                 $sAlternativeUrl = $aData['token_bar']['closebutton']['url'];
-                $aData['token_bar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl($sAlternativeUrl) );
+                $aData['token_bar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl($sAlternativeUrl) , array('tokenify') );
             }
 
             $this->getController()->renderPartial("/admin/token/token_bar", $aData);
@@ -544,7 +540,7 @@ class Survey_Common_Action extends CAction
      * @param array $aData
      *
      * @since 2014-09-30
-     * @author Olle Haerstedt <olle.haerstedt@limesurvey.org>
+     * @author Olle Haerstedt
      */
     function _organizequestionbar($aData)
     {
@@ -853,7 +849,9 @@ class Survey_Common_Action extends CAction
             if(isset($aData['surveybar']['closebutton']['url']))
             {
                 $sAlternativeUrl = $aData['surveybar']['closebutton']['url'];
-                $aData['surveybar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl($sAlternativeUrl) );
+                $aForbiddenWordsInUrl = isset($aData['surveybar']['closebutton']['forbidden'])?$aData['surveybar']['closebutton']['forbidden']:array();
+                $aForbiddenWordsInUrl[]='assessmentedit';
+                $aData['surveybar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl($sAlternativeUrl), $aForbiddenWordsInUrl );
             }
 
             if($aData['gid']==null)
@@ -908,12 +906,20 @@ class Survey_Common_Action extends CAction
             }
 
             // Question explorer
-            $aGroups = QuestionGroup::model()->findAllByAttributes(array('sid' => $iSurveyID, "language" => $sumresult1->defaultlanguage->surveyls_language));
+            $aGroups = QuestionGroup::model()->findAllByAttributes(array('sid' => $iSurveyID, "language" => $sumresult1->defaultlanguage->surveyls_language),array('order'=>'group_order ASC'));
             if(count($aGroups))
             {
                 foreach($aGroups as $group)
                 {
-                    $group->aQuestions = Question::model()->findAllByAttributes(array("sid"=>$iSurveyID, "gid"=>$group['gid'],"language"=>$sumresult1->defaultlanguage->surveyls_language));
+                    $group->aQuestions = Question::model()->findAllByAttributes(array("sid"=>$iSurveyID, "gid"=>$group['gid'],"language"=>$sumresult1->defaultlanguage->surveyls_language), array('order'=>'question_order ASC'));
+
+                    foreach($group->aQuestions as $question)
+                    {
+                        if(is_object($question))
+                        {
+                            $question->question = viewHelper::flatEllipsizeText($question->question,true,60,'[...]',0.5);
+                        }
+                    }
                 }
             }
             $aData['aGroups'] = $aGroups;
@@ -962,8 +968,8 @@ class Survey_Common_Action extends CAction
                 Yii::app()->user->setState('pageSize',(int)$_GET['pageSize']);
 
             // We filter the current survey id
-            $model['sid'] = $iSurveyID;
-            $model['language'] = $baselang;
+            $model->sid = $iSurveyID;
+            $model->language = $baselang;
 
             $aData['model']=$model;
 
@@ -1092,7 +1098,7 @@ class Survey_Common_Action extends CAction
 
         if (!$aSurveyInfo['language'])
         {
-            $aData['language'] = getLanguageNameFromCode($currentadminlang, false);
+            $aData['language'] = getLanguageNameFromCode($baselang, false);  // TODO: is $baselang correct here?
         }
         else
         {
@@ -1160,6 +1166,13 @@ class Survey_Common_Action extends CAction
         $aData['aAdditionalLanguages'] = $aAdditionalLanguages;
         $aData['surveyinfo'] = $aSurveyInfo;
         $aData['groups_count'] = $sumcount2;
+
+        // We get the state of the quickaction
+        // If the survey is new (ie: it has no group), it is opened by default
+        $setting_entry = 'quickaction_'.Yii::app()->user->getId();
+        $aData['quickactionstate'] = ($sumcount2<1)?1:getGlobalSetting($setting_entry);
+
+
         $this->getController()->renderPartial("/admin/survey/surveySummary_view", $aData);
     }
 
@@ -1193,7 +1206,7 @@ class Survey_Common_Action extends CAction
     }
     /**
     * Load menu bar of user group controller.
-    * @param int $ugid
+    * @param array $aData
     * @return void
     */
     function _userGroupBar($aData)

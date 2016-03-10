@@ -31,13 +31,31 @@
                 <?php if(count($aGroups)):?>
                     <li class="panel panel-default dropdownstyle" id="questionexplorer-group-container">
 
+
+                        <?php if (!$bSurveyIsActive): ?>
+                        <div class="row ">
+                            <div class="col-sm-8" >
+                                <!-- add group -->
+                                <a class="btn btn-link"
+                                    data-toggle="tooltip"
+                                    data-placement="bottom"
+                                    title="<?php eT('Add a group');?>"
+                                    class="" href="<?php echo $this->createUrl("/admin/questiongroups/sa/add/surveyid/$iSurveyId"); ?>">
+                                    <span class="glyphicon glyphicon-plus-sign"></span>
+                                    <?php eT('Add group');?>
+                                </a>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+
                         <?php foreach($aGroups as $aGroup):?>
 
                             <!-- Group -->
                             <div class="row explorer-group-title">
                                 <div class="col-sm-8">
                                     <a href="#" data-question-group-id="<?php echo $aGroup->gid; ?>" class="explorer-group">
-                                        <span id="caret-<?php echo $aGroup->gid; ?>" class="fa fa-caret-right caret-explorer-group"></span>&nbsp&nbsp<?php echo $aGroup->group_name;?>
+                                        <span id="caret-<?php echo $aGroup->gid; ?>" class="fa fa-caret-right caret-explorer-group"></span>&nbsp;&nbsp;<?php echo $aGroup->group_name;?>
                                     </a>
                                 </div>
 
@@ -48,7 +66,14 @@
                                             <span class="glyphicon glyphicon-plus-sign"></span>
                                         </a>
                                     </div>
-                                <?php endif; ?>
+                                <?php else: ?>
+                                    <div class="col-sm-3" id="questions-container-<?php echo $aGroup->gid; ?>">
+                                        <!-- add question to this group -->
+                                            <a title="<?php eT("You can't add questions while the survey is active.");?>" class='disabled' href="#" data-toggle="tooltip" data-placement="bottom">
+                                                <span class="glyphicon glyphicon-plus-sign"></span>
+                                            </a>
+                                    </div>
+                                <?php endif;?>
                             </div>
 
                             <!-- Questions -->
@@ -69,8 +94,7 @@
                                                             <br/>
                                                             <em>
                                                                 <?php
-                                                                    templatereplace($question->question, array(),$aReplacementData,'Unspecified', false ,$question->qid);
-                                                                    echo viewHelper::stripTagsEM(LimeExpressionManager::GetLastPrettyPrintExpression());
+                                                                    echo $question->question;
                                                                 ?>
                                                             </em>
                                                         </span>
@@ -87,8 +111,7 @@
                                                             <br/>
                                                             <em>
                                                                 <?php
-                                                                    templatereplace($question->question, array(),$aReplacementData,'Unspecified', false ,$question->qid);
-                                                                    echo viewHelper::stripTagsEM(LimeExpressionManager::GetLastPrettyPrintExpression());
+                                                                    echo $question->question;
                                                                 ?>
                                                             </em>
                                                         </span>

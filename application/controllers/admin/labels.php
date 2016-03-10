@@ -166,6 +166,7 @@ class labels extends Survey_Common_Action
         {
             if ($sa == "editlabelset" && Permission::model()->hasGlobalPermission('labelsets','update'))
             {
+                App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish(ADMIN_SCRIPT_PATH . 'labels.js' ));
                 $result = LabelSet::model()->findAllByAttributes(array('lid' => $lid));
                 foreach ($result as $row)
                 {
@@ -209,7 +210,7 @@ class labels extends Survey_Common_Action
         $aData['labelbar']['buttons']['edition']= TRUE;
         $aData['labelbar']['savebutton']['form'] = 'labelsetform';
         $aData['labelbar']['savebutton']['text'] = gT("Save");
-        $aData['labelbar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl('admin/labels/sa/view') );
+        $aData['labelbar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl('admin/labels/sa/view'), array('newlabelset') );  // Close button, UrlReferrer
         $this->_renderWrappedTemplate('labels', $aViewUrls, $aData);
 
     }
@@ -301,6 +302,11 @@ class labels extends Survey_Common_Action
                     'action' => $action,
                 );
             }
+            else {
+                //show listing
+                $aViewUrls['labelsets_view'][] = array();
+                $aData['model']  =  LabelSet::model();
+            }
         }
 
         if($lid==0)
@@ -312,10 +318,15 @@ class labels extends Survey_Common_Action
             $aData['labelbar']['buttons']['delete'] = true;
             $aData['labelbar']['savebutton']['form'] = 'mainform';
             $aData['labelbar']['savebutton']['text'] = gT("Save changes");
-            $aData['labelbar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl('admin/labels/sa/view') );
+            $aData['labelbar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl('admin/labels/sa/view') , array('newlabelset'));
             $aData['labelbar']['buttons']['edition'] = true;
 
             $aData['labelbar']['buttons']['edit'] = true;
+        }
+
+        if (isset($_GET['pageSize']))
+        {
+            Yii::app()->user->setState('pageSize',(int)$_GET['pageSize']);
         }
 
         $this->_renderWrappedTemplate('labels', $aViewUrls, $aData);
@@ -357,6 +368,33 @@ class labels extends Survey_Common_Action
     }
 
     /**
+     * Delete a label set
+     *
+     * @access public
+     * @return void
+     */
+    public function delete()
+    {
+            $lid = returnGlobal('lid');
+
+            if (Permission::model()->hasGlobalPermission('labelsets','delete'))
+            {
+                Yii::app()->loadHelper('admin/label');
+
+                if (deletelabelset($lid))
+                {
+                    Yii::app()->setFlashMessage(gT("Label set sucessfully deleted."));
+                }
+            }
+            else
+            {
+                Yii::app()->setFlashMessage(gT("You are not authorized to delete label sets."));
+            }
+
+            $this->getController()->redirect(array("admin/labels/sa/view"));
+    }
+
+    /**
      * Multi label export
      *
      * @access public
@@ -370,7 +408,7 @@ class labels extends Survey_Common_Action
 
             $aData['labelbar']['savebutton']['form'] = 'exportlabelset';
             $aData['labelbar']['savebutton']['text'] = gT("Export multiple label sets");
-            $aData['labelbar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl('admin/labels/sa/view') );
+            $aData['labelbar']['closebutton']['url'] = Yii::app()->request->getUrlReferrer( Yii::app()->createUrl('admin/labels/sa/view'), array('newlabelset') );
             $aData['labelbar']['buttons']['edition'] = TRUE;
             $this->_renderWrappedTemplate('labels', 'exportmulti_view', $aData);
         }

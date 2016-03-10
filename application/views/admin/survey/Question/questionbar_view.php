@@ -121,13 +121,13 @@ $aReplacementData=array();
                         <?php eT("Copy"); ?>
                     </a>
                 <?php else:?>
-                    <a class="btn disabled" href="#" role="button" onclick="alert('<?php eT("You can't copy a question if the survey is active.","js"); ?>'>
+                    <a class="btn disabled" href="#" role="button" onclick="alert('<?php eT("You can't copy a question if the survey is active.","js"); ?>');">
                         <span class="icon-copy"></span>
                         <?php eT("Copy"); ?>
                     </a>
                 <?php endif;?>
             <?php else:?>
-                    <a class="btn disabled" href="#" role="button" onclick="alert('<?php eT("You don't have the necessary permission.","js"); ?>'>
+                    <a class="btn disabled" href="#" role="button" onclick="alert('<?php eT("You don't have the necessary permission.","js"); ?>');">
                         <span class="icon-copy"></span>
                         <?php eT("Copy"); ?>
                     </a>
@@ -152,7 +152,7 @@ $aReplacementData=array();
             <?php if(Permission::model()->hasSurveyPermission($surveyid,'surveycontent','read')):?>
                 <?php if($qtypes[$qrrow['type']]['subquestions'] >0):?>
                     <a class="btn btn-default" href="<?php echo $this->createUrl('admin/questions/sa/subquestions/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid); ?>" role="button">
-                        <span class="icon-subquestions"></span>
+                        <span class="icon-defaultanswers"></span>
                         <?php eT("Edit subquestions "); ?>
                     </a>
                 <?php endif;?>
@@ -160,10 +160,10 @@ $aReplacementData=array();
 
             <!-- Answer Options -->
             <?php if( Permission::model()->hasSurveyPermission($surveyid,'surveycontent','read') && $qtypes[$qrrow['type']]['answerscales'] > 0 ):?>
-                    <a class="btn btn-default" href="<?php echo $this->createUrl('admin/questions/sa/answeroptions/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid); ?>" role="button">
-                        <span class="icon-defaultanswers"></span>
-                        <?php eT("Edit answer options "); ?>
-                    </a>
+                <a class="btn btn-default" href="<?php echo $this->createUrl('admin/questions/sa/answeroptions/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid); ?>" role="button">
+                    <span class="icon-defaultanswers"></span>
+                    <?php eT("Edit answer options "); ?>
+                </a>
             <?php endif;?>
 
 
@@ -224,8 +224,8 @@ $aReplacementData=array();
 
                 <?php endif;?>
 
+                <!-- Close -->
                 <?php if(isset($questionbar['closebutton']['url'])):?>
-                    <!-- $this->createUrl("admin/survey/sa/listquestiongroups/surveyid/{$surveyid}"); ?>-->
                     <a class="btn btn-danger" href="<?php echo $questionbar['closebutton']['url']; ?>" role="button">
                         <span class="glyphicon glyphicon-close"></span>
                         <?php eT("Close");?>

@@ -143,7 +143,7 @@ class questions extends Survey_Common_Action
         {
             $aData['sidemenu']['state'] = false;
             $aData['sidemenu']['questiongroups'] = true;
-            $aData['surveybar']['closebutton']['url'] = '/admin/survey/sa/listquestiongroups/surveyid/'.$iSurveyID;
+            $aData['surveybar']['closebutton']['url'] = '/admin/survey/sa/listquestiongroups/surveyid/'.$iSurveyID;  // Close button
             $aData['surveybar']['savebutton']['form'] = true;
             $aData['surveyid'] = $surveyid;
             $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
@@ -385,7 +385,7 @@ class questions extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
         $aData['questiongroupbar']['savebutton']['form'] = 'frmeditgroup';
-        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;
+        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;  // Close button
 
         $aData['questiongroupbar']['saveandclosebutton']['form'] = 'frmeditgroup';
         $aData['display']['menu_bars']['surveysummary'] = 'editdefaultvalues';
@@ -419,15 +419,11 @@ class questions extends Survey_Common_Action
         App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( ADMIN_SCRIPT_PATH . 'answers.js' ));
         App()->getClientScript()->registerPackage('jquery-selectboxes');
 
-        //$aData['display']['menu_bars']['surveysummary'] = 'viewgroup';
-        //$aData['display']['menu_bars']['gid_action'] = 'addquestion';
-        //$aData['display']['menu_bars']['qid_action'] = 'editansweroptions';
-
         $surveyinfo = Survey::model()->findByPk($surveyid)->surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$surveyid.")";
         $aData['questiongroupbar']['savebutton']['form'] = true;
         $aData['questiongroupbar']['saveandclosebutton']['form'] = 'frmeditgroup';
-        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;
+        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;  // Close button
 
         $aData['surveyid'] = $surveyid;
         $aData['gid']      = $gid;
@@ -637,7 +633,7 @@ class questions extends Survey_Common_Action
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$surveyid.")";
         $aData['questiongroupbar']['savebutton']['form'] = 'frmeditgroup';
         $aData['questiongroupbar']['saveandclosebutton']['form'] = 'frmeditgroup';
-        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;
+        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;  // Close button
 
         ///////////
         // sidemenu
@@ -870,8 +866,9 @@ class questions extends Survey_Common_Action
         App()->getClientScript()->registerPackage('qTip2');
         $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
+        $aData['surveybar']['importquestion'] = true;
         $aData['surveybar']['savebutton']['form'] = 'frmeditgroup';
-        $aData['surveybar']['closebutton']['url'] = '/admin/survey/sa/listquestions/surveyid/'.$iSurveyID;
+        $aData['surveybar']['closebutton']['url'] = '/admin/survey/sa/listquestions/surveyid/'.$iSurveyID;  // Close button
 
         $this->abortIfSurveyIsActive($surveyinfo);
 
@@ -911,7 +908,6 @@ class questions extends Survey_Common_Action
         {
             $eqrow['gid'] = $_GET['gid'];
         }
-
         $aData['eqrow'] = $eqrow;
 
         $sumresult1 = Survey::model()->findByPk($surveyid);
@@ -940,8 +936,24 @@ class questions extends Survey_Common_Action
         $aData['addlanguages']=Survey::model()->findByPk($surveyid)->additionalLanguages;
         $qattributes = array();
 
-        // Get the questions for this group
-        $aData['oqresult'] = NULL;
+        // Get the questions for this group, for position
+        // NB: gid won't be set if user clicks quick-button Add question
+        if (isset($_GET['gid']))
+        {
+            $oqresult = Question::model()->findAllByAttributes(array(
+                'sid' => $surveyid,
+                'gid' => $_GET['gid'],
+                'language' => $baselang,
+                'parent_qid'=> 0
+            ), array(
+                'order' => 'question_order'
+            ));
+            $aData['oqresult'] = $oqresult;
+        }
+        else
+        {
+            $aData['oqresult'] = array();
+        }
 
         App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( ADMIN_SCRIPT_PATH . 'questions.js' ));
 
@@ -995,7 +1007,7 @@ class questions extends Survey_Common_Action
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
         $aData['questiongroupbar']['savebutton']['form'] = 'frmeditgroup';
         $aData['questiongroupbar']['saveandclosebutton']['form'] = 'frmeditgroup';
-        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;
+        $aData['questiongroupbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$surveyid.'/gid/'.$gid.'/qid/'.$qid;  // Close button
 
         Yii::app()->session['FileManagerContext'] = "create:question:{$surveyid}";
 
@@ -1524,12 +1536,9 @@ class questions extends Survey_Common_Action
 
         $answers = retrieveAnswers($ia,$surveyid);
 
-        //$thistpl = getTemplatePath($thissurvey['template']);
-        // $oTemplate is a global variable defined in controller/survey/index
-        global $oTemplate;
+        $oTemplate = Template::model()->getInstance(null, $surveyid);
         $sTemplatePath = $oTemplate->path;
         $thistpl = $oTemplate->viewPath;
-
 
         doHeader();
 
@@ -1684,6 +1693,10 @@ EOD;
     */
     public function ajaxValidate($surveyid,$qid=false){
 
+        // Stupid hack since Bootstrap switch is a checkbox and 'other' used to be radio button
+        // TODO: Longterm, change 'other' to boolean; change the model rules
+        $_POST['other'] = ( Yii::app()->request->getPost('other') == '1' ) ? 'Y' : 'N' ;
+
         $iSurveyId=$surveyid;
         $iQid=$qid;
         $oSurvey=Survey::model()->findByPk($surveyid);
@@ -1749,7 +1762,7 @@ EOD;
     {
         if ($surveyInfo['active'] !== 'N')
         {
-            Yii::app()->user->setFlash('error', gT("Cannot add questions while the survey is active."));
+            Yii::app()->user->setFlash('error', gT("You can't add questions while the survey is active."));
             $this->getController()->redirect(Yii::app()->request->urlReferrer);
         }
     }
