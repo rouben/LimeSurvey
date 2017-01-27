@@ -17,13 +17,14 @@ if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
 * Update Database Controller
-*
-* @package        LimeSurvey
+* This controller must be accessible by unlogged user (in case of modifications of {{permissions}} blocking the login )
+* 
+* @package       LimeSurvey
 * @subpackage    Backend
 *
-* This controller must be accessible by unlogged user (in case of modifications of {{permissions}} blocking the login )
-*
 */
+
+
 class databaseupdate extends Survey_Common_Action
 {
     /**
@@ -46,5 +47,8 @@ class databaseupdate extends Survey_Common_Action
         $aData['updatedbaction'] = true;
 
         $this->_renderWrappedTemplate('update', $aViewUrls, $aData);
+
+        //$aData = array_merge($aData, $aViewUrls);
+        //Yii::app()->getController()->renderPartial('databaseupdate/db', $aData);
     }
 }

@@ -1,6 +1,6 @@
 <div class='menubar surveybar' id="browsermenubarid">
     <div class='row container-fluid'>
-        <?php if(isset($menu) && !$menu['edition']): ?>
+        <?php if(isset($menu) && isset($menu['edition']) && !$menu['edition']): ?>
             <div class="col-md-12">
             <!-- Show summary information -->
             <?php if (Permission::model()->hasSurveyPermission($surveyid, 'responses', 'read')): ?>
@@ -36,31 +36,6 @@
                     </ul>
                 </div>
                 <?php endif;?>
-
-
-                <!-- Display Last 50 Responses -->
-                <?php if (count($tmp_survlangs) < 2): ?>
-                    <a class="btn btn-default" href='<?php echo $this->createUrl("admin/responses/sa/browse/surveyid/$surveyid/start/0/limit/50/order/desc"); ?>' role="button">
-                        <span class="icon-viewlast text-success"></span>
-                        <?php eT("Last 50 responses"); ?>
-                    </a>
-                <?php else:?>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <span class="icon-viewlast text-success"></span>
-                        <?php eT("Last 50 responses");?> <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <?php foreach ($tmp_survlangs as $tmp_lang):?>
-                                <li>
-                                    <a href="<?php echo $this->createUrl("admin/responses/sa/browse/surveyid/$surveyid/start/0/limit/50/order/desc/browselang/$tmp_lang"); ?>" accesskey='b'>
-                                        <?php echo getLanguageNameFromCode($tmp_lang, false); ?>
-                                    </a>
-                                </li>
-                        <?php endforeach;?>
-                    </ul>
-                </div>
-                <?php endif;?>
             <?php endif;?>
 
 
@@ -83,7 +58,7 @@
                 <?php if ($thissurvey['savetimings'] == "Y"):?>
                     <a class="btn btn-default" href='<?php echo $this->createUrl("admin/responses/sa/time/surveyid/$surveyid"); ?>' role="button">
                         <span class="glyphicon glyphicon-time text-success"></span>
-                        <?php eT("Get time statistics from these responses"); ?>
+                        <?php eT("Timing statistics"); ?>
                     </a>
                 <?php endif;?>
             <?php endif;?>
@@ -177,7 +152,7 @@
                     <span class="glyphicon glyphicon-ok"></span>
                     <?php eT("Save");?>
                 </a>
-                <a class="btn btn-default" href="#" role="button">
+                <a class="btn btn-default" href="#" role="button" id="save-and-close-button">
                     <span class="glyphicon glyphicon-saved"></span>
                     <?php eT("Save and close");?>
                 </a>
@@ -243,7 +218,7 @@
 
                     <a class="btn btn-default" href='<?php echo $this->createUrl("admin/export/sa/exportresults/surveyid/$surveyid/id/$id"); ?>' role="button" >
                         <span class="icon-export text-success downloadfile"></span>
-                        <?php eT("Export this Response"); ?>
+                        <?php eT("Export this response"); ?>
                     </a>
                 <?php endif;?>
 
@@ -258,7 +233,7 @@
 
             <?php endif;?>
 
-            <?php if(isset($menu) && $menu['close']): ?>
+            <?php if(isset($menu) && isset($menu['close']) && $menu['close']): ?>
                 <a class="btn btn-danger" href="<?php echo  $menu['closeurl'];  ?>" role="button">
                     <span class="glyphicon glyphicon-close"></span>
                     <?php eT("Close");?>

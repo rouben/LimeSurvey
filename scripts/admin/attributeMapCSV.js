@@ -2,31 +2,15 @@ $(document).ready(function() {
     if(!$('#csvattribute').length ) {
         //alert("All the attributes are automatically mapped");
     }
-    var height = $(document).height();
-    var width = $(document).width();
     
-    var headingHeight = 0;
-    $('.attribute-column .heading').each(function(i) {
-        if($(this).height() > headingHeight) {
-            headingHeight = $(this).height();
-        }
-    });
-    $('.attribute-column .heading').height(headingHeight);
-    
+    // Find the biggest column and set both to that height
     function adjustHeights() {
-        $('.attribute-column, .droppable').css({ 'height': 'auto' });
-        $('.attribute-column').height($('.draggable-container').height());
-        
-        var ncHeadingHeight = $('#newcreated .heading').outerHeight();
-        var ncInstructionsHeight = $('#newcreated .instructions').outerHeight();
-        $('.newcreate').css({
-            'height':$('#newcreated').height()-ncHeadingHeight-5-ncInstructionsHeight
-        });
-        var csvHeadingHeight = $('#csvattribute .heading').outerHeight();
-        var csvInstructionsHeight = $('#csvattribute .instructions').outerHeight();
-        $('.csvatt').css({
-            'height':$('#csvattribute').height()-csvHeadingHeight-5-csvInstructionsHeight
-        });
+
+        var max = Math.max($('.droppable-new').height(), $('.droppable-csv').height());
+        console.log('max', max);
+
+        $('.droppable-new').css('min-height', max);
+        $('.droppable-csv').css('min-height', max);
     }
     
     adjustHeights();    
@@ -64,11 +48,13 @@ $(document).ready(function() {
             $(newDraggable).removeClass('ui-draggable-dragging').css({
                 'left':'0',
                 'z-index': '',
-                'opacity': 1
+                'opacity': 1,
+                'width': ''
             }).animate({
                 top: ''
             }, 300).draggable({ 
                 revert: "invalid",
+                zIndex: 150,
                 appendTo: "body",
                 containment: $('.draggable-container'),
                 opacity: 0.75
@@ -85,7 +71,7 @@ $(document).ready(function() {
                 newDraggable.html(newDraggable.attr('id').replace('cs_',''));
                 var id = newDraggable.attr('id').replace(/ /g, '');
                 var name = newDraggable.attr('data-name');
-                newDraggable.prepend('<input type="text" id="td_' + id + '" value="' + name + '">');
+                newDraggable.prepend('<input type="text" id="td_' + id + '" value="' + name + '">&nbsp;');
             }  
                         
             // Reset the mappable attribute classes 
@@ -105,12 +91,34 @@ $(document).ready(function() {
         drop: function(event, ui) {
 
             // Insert nice arrow
-            $(this).find('.col-sm-6:first-child').append('<span class="fa fa-arrows-h csvatt-arrow"></span>');
+            var col = $(this).find('.col-sm-6:first-child');
+            col.append('<span class="fa fa-arrows-h csvatt-arrow"></span>');
 
             // Physically  move the draggable to the target (the plugin just visually moves it)
             // Need to use a clone for this to fake out iPad
             var newDraggable = $(ui.draggable).clone();
+            newDraggable.css('width', '');
+            newDraggable.css('overflow', 'hidden');
+            newDraggable.css('white-space', 'nowrap');
             newDraggable.appendTo(this);
+
+            var that = this;
+
+            newDraggable.draggable({ 
+                revert: "invalid",
+                zIndex: 150,
+                appendTo: "body",
+                containment: $('.draggable-container'),
+                opacity: 0.75,
+                stop: function(event, ui) {
+                    // ui.helper, ui.position, .ui.offset
+                    console.log(col);
+                    col.find('.fa-arrows-h').remove();
+                    col.next().remove();
+                    $(that).droppable('enable');
+                }
+            });
+
             $(ui.draggable).remove();
 
             // Don't allow user to drop more attributes here
@@ -132,6 +140,7 @@ $(document).ready(function() {
 
             newDraggable.wrap("<div class='col-sm-6'></div>");
 
+            adjustHeights();
         }
     });
     

@@ -17,26 +17,29 @@
 *
 * This controller performs token actions
 *
-* @package        LimeSurvey
+* @package       LimeSurvey
 * @subpackage    Backend
 */
 class tokens extends Survey_Common_Action
 {
 
     /**
-    * Show token index page, handle token database
-    */
-    function index($iSurveyId)
+     * Show token index page, handle token database
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function index($iSurveyId)
     {
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
         $iSurveyId = sanitize_int($iSurveyId);
         //// TODO : check if it does something different than the model function
         $thissurvey = getSurveyInfo($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'read') && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'create') && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')
             && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'export') && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'import')
             && !Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update')
-            )
+        )
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
 
@@ -66,11 +69,11 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * tokens::bounceprocessing()
-    *
-    * @return void
-    */
-    function bounceprocessing($iSurveyId)
+     * tokens::bounceprocessing()
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function bounceprocessing($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
@@ -86,33 +89,35 @@ class tokens extends Survey_Common_Action
             eT("We are sorry but you don't have permissions to do this.");
             return;
         }
+
         if ($thissurvey['bounceprocessing'] != 'N' ||  ($thissurvey['bounceprocessing'] == 'G' && getGlobalSetting('bounceaccounttype') != 'off'))
         {
             if (!function_exists('imap_open'))
             {
-                   eT("The imap PHP library is not installed. Please contact your system administrator.");
+                   eT("The imap PHP library is not installed or not activated. Please contact your system administrator.");
                    return;
             }
             $bouncetotal = 0;
             $checktotal = 0;
             if ($thissurvey['bounceprocessing'] == 'G')
             {
-                $accounttype=strtoupper(getGlobalSetting('bounceaccounttype'));
-                $hostname = getGlobalSetting('bounceaccounthost');
-                $username = getGlobalSetting('bounceaccountuser');
-                $pass = getGlobalSetting('bounceaccountpass');
-                $hostencryption=strtoupper(getGlobalSetting('bounceencryption'));
+                $accounttype    = strtoupper(getGlobalSetting('bounceaccounttype'));
+                $hostname       = getGlobalSetting('bounceaccounthost');
+                $username       = getGlobalSetting('bounceaccountuser');
+                $pass           = getGlobalSetting('bounceaccountpass');
+                $hostencryption = strtoupper(getGlobalSetting('bounceencryption'));
             }
             else
             {
-                $accounttype=strtoupper($thissurvey['bounceaccounttype']);
-                $hostname = $thissurvey['bounceaccounthost'];
-                $username = $thissurvey['bounceaccountuser'];
-                $pass = $thissurvey['bounceaccountpass'];
-                $hostencryption=strtoupper($thissurvey['bounceaccountencryption']);
+                $accounttype    = strtoupper($thissurvey['bounceaccounttype']);
+                $hostname       = $thissurvey['bounceaccounthost'];
+                $username       = $thissurvey['bounceaccountuser'];
+                $pass           = $thissurvey['bounceaccountpass'];
+                $hostencryption = strtoupper($thissurvey['bounceaccountencryption']);
             }
 
-            @list($hostname, $port) = split(':', $hostname);
+            list($hostname, $port) = explode(':', $hostname); // deprecated: split(':', $hostname);
+
             if (empty($port))
             {
                 if ($accounttype == "IMAP")
@@ -157,10 +162,12 @@ class tokens extends Survey_Common_Action
                 case "IMAP":
                     $flags.="/imap";
                     break;
+
                 case "POP":
                     $flags.="/pop3";
                     break;
             }
+
             switch ($hostencryption) // novalidate-cert to have personal CA , maybe option.
             {
                 case "OFF":
@@ -174,74 +181,83 @@ class tokens extends Survey_Common_Action
                     break;
             }
 
-            if ($mbox = @imap_open('{' . $hostname . $flags . '}INBOX', $username, $pass))
+            $mbox = @imap_open('{' . $hostname . $flags . '}INBOX', $username, $pass);
+            if ($mbox)
             {
                 imap_errors();
                 $count = imap_num_msg($mbox);
                 if ($count>0)
                 {
-                    $lasthinfo = imap_headerinfo($mbox, $count);
-                    $datelcu = strtotime($lasthinfo->date);
-                    $datelastbounce = $datelcu;
-                    $lastbounce = $thissurvey['bouncetime'];
-                    while ($datelcu > $lastbounce)
-                    {
-                        @$header = explode("\r\n", imap_body($mbox, $count, FT_PEEK)); // Don't mark messages as read
+                    $aMessageIDs=imap_search($mbox,'UNSEEN',SE_UID);
+                    if (!$aMessageIDs) {
+                        $aMessageIDs=array();
+                    }
+                    foreach ($aMessageIDs as $sMessageID) {
+                        $header = explode("\r\n", imap_body($mbox, $sMessageID, FT_UID && FT_PEEK )); // Don't mark messages as read
+
                         foreach ($header as $item)
                         {
                             if (preg_match('/^X-surveyid/', $item))
                             {
                                 $iSurveyIdBounce = explode(": ", $item);
                             }
+
                             if (preg_match('/^X-tokenid/', $item))
                             {
                                 $tokenBounce = explode(": ", $item);
+
                                 if ($iSurveyId == $iSurveyIdBounce[1])
                                 {
                                     $aData = array(
-                                    'emailstatus' => 'bounced'
+                                        'emailstatus' => 'bounced'
                                     );
-                                    $condn = array('token' => $tokenBounce[1]);
+
+                                    $condn  = array('token' => $tokenBounce[1]);
                                     $record = Token::model($iSurveyId)->findByAttributes($condn);
-                                    if ($record->emailstatus != 'bounced')
+
+                                    if (!empty($record) && $record->emailstatus != 'bounced')
                                     {
                                         $record->emailstatus = 'bounced';
                                         $record->save();
                                         $bouncetotal++;
                                     }
-                                    $readbounce = imap_body($mbox, $count); // Put read
+
+                                    $readbounce = imap_body($mbox, $sMessageID, FT_UID); // Put read
                                     if (isset($thissurvey['bounceremove']) && $thissurvey['bounceremove']) // TODO Y or just true, and a imap_delete
                                     {
-                                        $deletebounce = imap_delete($mbox, $count); // Put delete
+                                        $deletebounce = imap_delete($mbox, $sMessageID, FT_UID); // Put delete
                                     }
                                 }
                             }
                         }
-                        $count--;
-                        @$lasthinfo = imap_headerinfo($mbox, $count);
-                        @$datelc = $lasthinfo->date;
-                        $datelcu = strtotime($datelc);
                         $checktotal++;
                     }
                 }
-                @imap_close($mbox);
-                $condn = array('sid' => $iSurveyId);
-                $survey = Survey::model()->findByAttributes($condn);
-                $survey->bouncetime = $datelastbounce;
-                $survey->save();
+                imap_close($mbox);
 
-                if ($bouncetotal > 0)
-                {
-                    printf(gT("%s messages were scanned out of which %s were marked as bounce by the system."), $checktotal, $bouncetotal);
+                if ($bouncetotal > 0){
+                    printf(gT("%s unread messages were scanned out of which %s were marked as bounce by the system."), $checktotal, $bouncetotal);
+                    eT("You can now close this modal box.");
+                }else{
+                    printf(gT("%s unread messages were scanned, none were marked as bounce by the system."), $checktotal);
+                    eT("You can now close this modal box.");
                 }
-                else
+            }else{
+                $sSettingsUrl = App()->createUrl('admin/tokens/sa/bouncesettings/surveyid/'.$iSurveyId);
+                eT("Failed to open the inbox of the bounce email account.");
+                echo "<br><strong>";
+                printf(gT("Please %s check your settings %s."), '<a href="'.$sSettingsUrl.'" title="Bounce settings" >', '</a>');
+                echo "</strong><br> <br/>";
+                eT("Error message returned by IMAP:");
+                echo "<br>";
+                $aErrors = @imap_errors();
+
+                foreach ($aErrors as $sError)
                 {
-                    printf(gT("%s messages were scanned, none were marked as bounce by the system."), $checktotal);
+                    echo $sError.'<br/>';
                 }
-            }
-            else
-            {
-                eT("Please check your settings");
+                echo "<br><br/>";
+                eT("You can now close this modal box.");
             }
         }
         else
@@ -249,49 +265,68 @@ class tokens extends Survey_Common_Action
             eT("Bounce processing is deactivated either application-wide or for this survey in particular.");
             return;
         }
-
-
-        exit; // if bounceprocessing : javascript : no more todo
     }
 
     /**
-    * Browse Tokens
-    */
-    function browse($iSurveyId, $limit = 50, $start = 0, $order = false, $searchstring = false)
+     * @return boolean
+     */
+    public function deleteMultiple()
+    {
+        // TODO: permission checks
+        $aTokenIds = json_decode(Yii::app()->getRequest()->getPost('sItems'));
+        $iSid = Yii::app()->getRequest()->getPost('sid');
+        TokenDynamic::model($iSid)->deleteRecords($aTokenIds);
+        return true;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function deleteToken()
+    {
+        // TODO: permission checks
+        $aTokenId = Yii::app()->getRequest()->getParam('sItem');
+        $iSid = Yii::app()->getRequest()->getParam('sid');
+        TokenDynamic::model($iSid)->deleteRecords(array($aTokenId));
+        return true;
+    }
+
+    /**
+     * Browse Tokens
+     * @param int $iSurveyId
+     * @param int $limit
+     * @param int $start
+     * @param boolean $order
+     * @param boolean $searchstring
+     * @return void
+     */
+    public function browse($iSurveyId, $limit = 50, $start = 0, $order = false, $searchstring = false)
     {
         $iSurveyId = sanitize_int($iSurveyId);
+
         /* Check permissions */
-        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'read'))
-        {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'read')) {
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/tokens/sa/index/surveyid/{$iSurveyId}"));
         }
+
+        // TODO: Why needed?
+        App()->clientScript->registerPackage('bootstrap-switch');
+
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
-        if (!$bTokenExists) //If no tokens table exists
-        {
+        if (!$bTokenExists) { //If no tokens table exists
             self::_newtokentable($iSurveyId);
         }
 
-    /* build JS variable to hide buttons forbidden for the current user */
-    $aData['showDelButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'delete')?'true':'false';
-    $aData['showInviteButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')?'true':'false';
-    $aData['showBounceButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')?'true':'false';
-    $aData['showRemindButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')?'true':'false';
+        /* build JS variable to hide buttons forbidden for the current user */
+        $aData['showDelButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'delete')?'true':'false';
+        $aData['showInviteButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')?'true':'false';
+        $aData['showBounceButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')?'true':'false';
+        $aData['showRemindButton'] = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')?'true':'false';
 
         // Javascript
-        App()->getClientScript()->registerPackage('jqgrid');
-        App()->getClientScript()->registerScriptFile(Yii::app()->getConfig('adminscripts') . "tokens.js");
-        // CSS
-        // Right to Left
-        if (getLanguageRTL($_SESSION['adminlang']))
-        {
-            App()->getClientScript()->registerCssFile(Yii::app()->getConfig('adminstyleurl') . "css/jqgrid-rtl.css" );
-        }
-        else
-        {
-            App()->getClientScript()->registerCssFile(Yii::app()->getConfig('adminstyleurl') . "css/jqgrid.css" );
-        }
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
 
         Yii::app()->loadHelper('surveytranslator');
         Yii::import('application.libraries.Date_Time_Converter', true);
@@ -305,20 +340,16 @@ class tokens extends Survey_Common_Action
         $last = $start - $limit;
         $end = $tkcount - $limit;
 
-        if ($end < 0)
-        {
+        if ($end < 0) {
             $end = 0;
         }
-        if ($last < 0)
-        {
+        if ($last < 0) {
             $last = 0;
         }
-        if ($next >= $tkcount)
-        {
+        if ($next >= $tkcount) {
             $next = $tkcount - $limit;
         }
-        if ($end < 0)
-        {
+        if ($end < 0) {
             $end = 0;
         }
         $order = Yii::app()->request->getPost('order','tid');
@@ -340,228 +371,46 @@ class tokens extends Survey_Common_Action
         $aData['dateformatdetails'] = $dateformatdetails;
         $aLanguageCodes=Survey::model()->findByPk($iSurveyId)->getAllLanguages();
         $aLanguages=array();
-        foreach ($aLanguageCodes as $aCode)
-        {
+
+        foreach ($aLanguageCodes as $aCode) {
             $aLanguages[$aCode]=getLanguageNameFromCode($aCode,false);
         }
-        $aData['aLanguages'] = $aLanguages;
 
+        $aData['aLanguages']                    = $aLanguages;
+        $surveyinfo                             = Survey::model()->findByPk($iSurveyId)->surveyinfo;
+        $aData["surveyinfo"]                    = $surveyinfo;
+        $aData['title_bar']['title']            = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['sidemenu']["token_menu"]        = true;
+        $aData['sidemenu']['state'] = false;
+        $aData['token_bar']['buttons']['view']  = true;
 
-        $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
-        $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
-        $aData['sidemenu']["token_menu"]=TRUE;
-        $aData['token_bar']['buttons']['view']=TRUE;
+        /// FOR GRID View
+        $model =  TokenDynamic::model($iSurveyId);
+        if(isset($_GET['TokenDynamic'])) {
+            $model->setAttributes($_GET['TokenDynamic'],false);
+        }
 
+        $aData['model'] = $model;
 
+        // Set number of page
+        if (isset($_GET['pageSize'])) {
+            Yii::app()->user->setState('pageSize',(int)$_GET['pageSize']);
+        }
+
+        $aData['massiveAction'] = App()->getController()->renderPartial('/admin/token/massive_actions/_selector', array(), true, false);
 
         $this->_renderWrappedTemplate('token', array('browse'), $aData);
     }
 
     /**
-    * This function sends the shared participant info to the share panel using JSON encoding
-    * This function is called after the share panel grid is loaded
-    * This function returns the json depending on the user logged in by checking it from the session
-    * @param it takes the session user data loginID
-    * @return JSON encoded string containg sharing information
-    */
-    function getTokens_json($iSurveyId, $search = null)
+     * Called by if a token is saved after editing
+     * @todo Check if method is still in use
+     * @param int $iSurveyId The Survey ID
+     * @return void
+     */
+    public function editToken($iSurveyId)
     {
-        // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
-        $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
-        if (!$bTokenExists) //If no tokens table exists
-        {
-            eT("No token table.");// return json ? error not treated in js.
-            return;
-        }
-        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'read'))
-        {
-            eT("We are sorry but you don't have permissions to do this.");// return json ? error not treated in js.
-            return;
-        }
-        $page  = (int)Yii::app()->request->getPost('page', 1);
-        $limit = (int)Yii::app()->request->getPost('rows', 25);
-        $sidx = Yii::app()->request->getPost('sidx', 'lastname');
-        $sord = Yii::app()->request->getPost('sord', 'asc');
-        if (strtolower($sord)!='desc') {
-            $sord='asc';
-        }
-        $aData = new stdClass;
-        $aData->page = $page;
-
-        $aSearchArray=Yii::app()->request->getPost('searcharray');
-        if(empty($search) && !empty($aSearchArray)){
-            $search=$aSearchArray;
-        }
-        if (!empty($search)) {
-            $condition = TokenDynamic::model($iSurveyId)->getSearchMultipleCondition($search);
-        }else{
-            $condition = new CDbCriteria();
-        }
-
-        $condition->order = Yii::app()->db->quoteColumnName($sidx). " ". $sord;
-        $condition->offset = ($page - 1) * $limit;
-        $condition->limit = $limit;
-        $tokens = Token::model($iSurveyId)->findAll($condition);
-
-        $condition->offset=0;
-        $condition->limit=0;
-        $aData->records = Token::model($iSurveyId)->count($condition);
-
-        if ($limit>$aData->records)
-        {
-            $limit=$aData->records;
-        }
-        if ($limit!=0)
-        {
-            $aData->total = ceil($aData->records / $limit);
-        }
-        else
-        {
-            $aData->total = 0;
-        }
-
-        Yii::app()->loadHelper("surveytranslator");
-
-        $format = getDateFormatData(Yii::app()->session['dateformat']);
-
-        $aSurveyInfo = Survey::model()->findByPk($iSurveyId)->getAttributes(); //Get survey settings
-        $attributes  = getAttributeFieldNames($iSurveyId);
-
-        // Now find all responses for the visible tokens
-        $visibleTokens = array();
-        $answeredTokens = array();
-        if ($aSurveyInfo['anonymized'] == "N" && $aSurveyInfo['active'] == "Y") {
-            foreach ($tokens as $token) {
-                if(isset($token['token']) && $token['token'])
-                    $visibleTokens[] = $token['token'];
-            }
-            $answers = SurveyDynamic::model($iSurveyId)->findAllByAttributes(array('token'=>$visibleTokens));
-            foreach($answers as $answer) {
-                $answeredTokens[$answer['token']] = $answer['token'];
-            }
-        }
-
-        $bReadPermission = Permission::model()->hasSurveyPermission($iSurveyId, 'responses', 'read');
-        $bCreatePermission = Permission::model()->hasSurveyPermission($iSurveyId, 'responses', 'create');
-        $bTokenUpdatePermission = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update');
-        $bTokenDeletePermission = Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'delete');
-        $bGlobalPanelReadPermission = Permission::model()->hasGlobalPermission('participantpanel','read');
-        foreach ($tokens as $token)
-        {
-            $aRowToAdd = array();
-            if ((int) $token['validfrom']) {
-                $token['validfrom'] = date($format['phpdate'] . ' H:i', strtotime(trim($token['validfrom'])));
-            } else {
-                $token['validfrom'] = '';
-            }
-            if ((int) $token['validuntil']) {
-                $token['validuntil'] = date($format['phpdate'] . ' H:i', strtotime(trim($token['validuntil'])));
-            } else {
-                $token['validuntil'] = '';
-            }
-
-            $aRowToAdd['id'] = $token['tid'];
-
-            $action="";
-            $action .= "<div class='inputbuttons'>";    // so we can hide this when edit is clicked
-
-            // Check is we have an answer
-            if (in_array($token['token'], $answeredTokens) && $bReadPermission) {
-                // @@TODO change link
-                $url = $this->getController()->createUrl("admin/responses/sa/browse/surveyid/{$iSurveyId}", array('token'=>$token['token']));
-                $title = gT("View response details");
-                $action .= CHtml::link(
-                                        '<span class="inputbuttons-square glyphicon glyphicon-list-alt text-success" title="'.$title.'"></span>',
-                                        $url,
-                                        array('class'=>'imagelink'));
-            } else {
-                    $action .= '<div style="width: 20px; height: 16px; float: left;"></div>';
-            }
-
-            // Check if the token can be taken
-            if ($token['token'] != "" && ($token['completed'] == "N" || $token['completed'] == "" || $aSurveyInfo['alloweditaftercompletion']=="Y") && $bCreatePermission) {
-                $action .= viewHelper::getIconLink('inputbuttons-square icon-do text-success', "survey/index/sid/{$iSurveyId}/token/{$token['token']}/lang/{$token['language']}/newtest/Y", gT("Do survey"), '_blank');
-            } else {
-                $action .= '<div style="width: 20px; height: 16px; float: left;"></div>';
-            }
-
-            // Add delete icon
-            if($bTokenDeletePermission){
-                $attribs = array('onclick' => 'if (confirm("' . gT("Are you sure you want to delete this entry?") . ' (' . $token['tid'] . ')")) {$("#displaytokens").delRowData(' . $token['tid'] . ');$.post(delUrl,{tid:' . $token['tid'] . '});}');
-                $action .= viewHelper::getIconLink('inputbuttons-square glyphicon glyphicon-trash text-warning', null, gT("Delete token entry"), null, 'imagelink btnDelete', $attribs);
-            }
-
-            // Add email button
-            if (strtolower($token['emailstatus']) == 'ok' && $token['email'] && $bTokenUpdatePermission) {
-                if ($token['completed'] == 'N' && $token['usesleft'] > 0) {
-                    if ($token['sent'] == 'N') {
-                        $action .= viewHelper::getIconLink('inputbuttons-square icon-invite text-success', "admin/tokens/sa/email/surveyid/{$iSurveyId}/tokenids/" . $token['tid'], gT("Send invitation email to this person (if they have not yet been sent an invitation email)"), "_blank");
-                    } else {
-                        $action .= viewHelper::getIconLink('inputbuttons-square icon-remind text-success', "admin/tokens/sa/email/action/remind/surveyid/{$iSurveyId}/tokenids/" . $token['tid'], gT("Send reminder email to this person (if they have already received the invitation email)"), "_blank");
-                    }
-                } else {
-                    $action .= '<div style="width: 20px; height: 16px; float: left;"></div>';
-                }
-            } else {
-                $action .= '<div style="width: 20px; height: 16px; float: left;"></div>';
-            }
-
-            // Add edit button
-            if($bTokenUpdatePermission) {
-                $action .= viewHelper::getIconLink('inputbuttons-square glyphicon glyphicon-pencil text-success', null, gT("Edit token entry"), null, 'imagelink token_edit');
-            }
-
-            // Add view button?
-            if(!empty($token['participant_id']) && $token['participant_id'] != "" && $bGlobalPanelReadPermission) {
-                $action .= viewHelper::getIconLink('inputbuttons-square icon-cpdb text-success', null, gT("View this person in the central participants database"), null, 'imagelink cpdb',array('onclick'=>"sendPost('".$this->getController()->createUrl('admin/participants/sa/displayParticipants')."','',['searchcondition'],['participant_id||equal||{$token['participant_id']}']);"));
-            } else {
-                $action .= '<div style="width: 20px; height: 16px; float: left;"></div>';
-            }
-
-            $action .= '</div>';
-
-            $aRowToAdd['cell'] = array($token['tid'],
-                $action,
-                htmlspecialchars($token['firstname'],ENT_QUOTES),
-                htmlspecialchars($token['lastname'],ENT_QUOTES),
-                htmlspecialchars($token['email'],ENT_QUOTES),
-                htmlspecialchars($token['emailstatus'],ENT_QUOTES),
-                htmlspecialchars($token['token'],ENT_QUOTES),
-                htmlspecialchars($token['language'],ENT_QUOTES),
-                htmlspecialchars($token['sent'],ENT_QUOTES),
-                htmlspecialchars($token['remindersent'],ENT_QUOTES),
-                htmlspecialchars($token['remindercount'],ENT_QUOTES),
-                htmlspecialchars($token['completed'],ENT_QUOTES),
-                htmlspecialchars($token['usesleft'],ENT_QUOTES),
-                htmlspecialchars($token['validfrom'],ENT_QUOTES),
-                htmlspecialchars($token['validuntil'],ENT_QUOTES));
-            foreach ($attributes as $attribute) {
-                $aRowToAdd['cell'][] = htmlspecialchars($token[$attribute],ENT_QUOTES);
-            }
-            $aData->rows[] = $aRowToAdd;
-        }
-        viewHelper::disableHtmlLogging();
-        header("Content-type: application/json");
-        echo ls_json_encode($aData);
-    }
-
-    function getSearch_json($iSurveyId)
-    {
-        $searchcondition = Yii::app()->request->getQuery('search');
-        $searchcondition = urldecode($searchcondition);
-        $finalcondition = array();
-        $condition = explode("||", $searchcondition);
-        return $this->getTokens_json($iSurveyId, $condition);
-    }
-
-    /**
-    * Called by jqGrid if a token is saved after editing
-    *
-    * @param mixed $iSurveyId The Survey ID
-    */
-    function editToken($iSurveyId)
-    {
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'create'))
         {
             eT("We are sorry but you don't have permissions to do this.");// return json ? error not treated in js.
@@ -600,57 +449,64 @@ class tokens extends Survey_Common_Action
 
             echo $from . ',' . $until;
             $aData = array(
-            'firstname' => Yii::app()->request->getPost('firstname'),
-            'lastname' => Yii::app()->request->getPost('lastname'),
-            'email' => Yii::app()->request->getPost('email'),
-            'emailstatus' => Yii::app()->request->getPost('emailstatus'),
-            'token' => Yii::app()->request->getPost('token'),
-            'language' => Yii::app()->request->getPost('language'),
-            'sent' => Yii::app()->request->getPost('sent'),
-            'remindersent' => Yii::app()->request->getPost('remindersent'),
-            'remindercount' => Yii::app()->request->getPost('remindercount'),
-            'completed' => Yii::app()->request->getPost('completed'),
-            'usesleft' => Yii::app()->request->getPost('usesleft'),
+            'firstname' => flattenText(Yii::app()->request->getPost('firstname')),
+            'lastname' => flattenText(Yii::app()->request->getPost('lastname')),
+            'email' => flattenText(Yii::app()->request->getPost('email')),
+            'emailstatus' => flattenText(Yii::app()->request->getPost('emailstatus')),
+            'token' => sanitize_token(Yii::app()->request->getPost('token')),
+            'language' => flattenText(Yii::app()->request->getPost('language')),
+            'sent' => flattenText(Yii::app()->request->getPost('sent')),
+            'remindersent' => flattenText(Yii::app()->request->getPost('remindersent')),
+            'remindercount' => flattenText(Yii::app()->request->getPost('remindercount')),
+            'completed' => flattenText(Yii::app()->request->getPost('completed')),
+            'usesleft' => flattenText(Yii::app()->request->getPost('usesleft')),
             'validfrom' => $from,
             'validuntil' => $until);
             $attrfieldnames = GetParticipantAttributes($iSurveyId);
             foreach ($attrfieldnames as $attr_name => $desc)
             {
-                $value = Yii::app()->request->getPost($attr_name);
-                if ($desc['mandatory'] == 'Y' && trim($value) == '')
-                    $this->getController()->error(sprintf(gT('%s cannot be left empty'), $desc['description']));
-                $aData[$attr_name] = Yii::app()->request->getPost($attr_name);
+                $value = flattenText(Yii::app()->request->getPost($attr_name));
+                if ($desc['mandatory'] == 'Y' && trim($value) == '') {
+                    Yii::app()->setFlashMessage(sprintf(gT('%s cannot be left empty'), $desc['description']), 'error');
+                    $this->getController()->refresh();
+                }
+                $aData[$attr_name] = $value;
             }
             $token = Token::model($iSurveyId)->find('tid=' . Yii::app()->getRequest()->getPost('id'));
 
             foreach ($aData as $k => $v)
                 $token->$k = $v;
+
             echo $token->update();
         }
         // if add it will insert a new row
         elseif ($sOperation == 'add'  && Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'create'))
         {
             if (Yii::app()->request->getPost('language') == '')
-                $aData = array('firstname' => Yii::app()->request->getPost('firstname'),
-                'lastname' => Yii::app()->request->getPost('lastname'),
-                'email' => Yii::app()->request->getPost('email'),
-                'emailstatus' => Yii::app()->request->getPost('emailstatus'),
-                'token' => Yii::app()->request->getPost('token'),
-                'language' => Yii::app()->request->getPost('language'),
-                'sent' => Yii::app()->request->getPost('sent'),
-                'remindersent' => Yii::app()->request->getPost('remindersent'),
-                'remindercount' => Yii::app()->request->getPost('remindercount'),
-                'completed' => Yii::app()->request->getPost('completed'),
-                'usesleft' => Yii::app()->request->getPost('usesleft'),
+            {
+                 $aData = array('firstname' => flattenText(Yii::app()->request->getPost('firstname')),
+                'lastname' => flattenText(Yii::app()->request->getPost('lastname')),
+                'email' => flattenText(Yii::app()->request->getPost('email')),
+                'emailstatus' => flattenText(Yii::app()->request->getPost('emailstatus')),
+                'token' => sanitize_token(Yii::app()->request->getPost('token')),
+                'language' => flattenText(Yii::app()->request->getPost('language')),
+                'sent' => flattenText(Yii::app()->request->getPost('sent')),
+                'remindersent' => flattenText(Yii::app()->request->getPost('remindersent')),
+                'remindercount' => flattenText(Yii::app()->request->getPost('remindercount')),
+                'completed' => flattenText(Yii::app()->request->getPost('completed')),
+                'usesleft' => flattenText(Yii::app()->request->getPost('usesleft')),
                 'validfrom' => $from,
                 'validuntil' => $until);
+            }
             $attrfieldnames = Survey::model()->findByPk($iSurveyId)->tokenAttributes;
             foreach ($attrfieldnames as $attr_name => $desc)
             {
-                $value = Yii::app()->request->getPost($attr_name);
-                if ($desc['mandatory'] == 'Y' && trim($value) == '')
-                    $this->getController()->error(sprintf(gT('%s cannot be left empty'), $desc['description']));
-                $aData[$attr_name] = Yii::app()->request->getPost($attr_name);
+                $value = flattenText(Yii::app()->request->getPost($attr_name));
+                if ($desc['mandatory'] == 'Y' && trim($value) == '') {
+                    Yii::app()->setFlashMessage(sprintf(gT('%s cannot be left empty'), $desc['description']), 'error');
+                    $this->getController()->refresh();
+                }
+                $aData[$attr_name] = $value;
             }
             $token = Token::create($surveyId);
             $token->setAttributes($aData, false);
@@ -669,251 +525,250 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Add new token form
-    */
-    function addnew($iSurveyId)
+     * Add new token form
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function addnew($iSurveyId)
     {
-        // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
+        $aData = array();
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
         $iSurveyId = sanitize_int($iSurveyId);
-        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'create'))
-        {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+
+        // Check permission
+        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'create')) {
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
+
+        // Check to see if a token table exists for this survey
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
-        if (!$bTokenExists) //If no tokens table exists
-        {
+        if (!$bTokenExists) {
+            // If no tokens table exists
             self::_newtokentable($iSurveyId);
         }
         Yii::app()->loadHelper("surveytranslator");
 
         $dateformatdetails = getDateFormatData(Yii::app()->session['dateformat']);
-
 
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData["surveyinfo"] = $surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['buttons']['view']=TRUE;
-
-        if (Yii::app()->request->getPost('subaction') == 'inserttoken')
-        {
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
+        $request = Yii::app()->request;
+        if ($request->getPost('subaction') == 'inserttoken') {
 
             Yii::import('application.libraries.Date_Time_Converter');
-            //Fix up dates and match to database format
-            if (trim(Yii::app()->request->getPost('validfrom')) == '')
-            {
+
+            // Fix up dates and match to database format
+            if (trim($request->getPost('validfrom')) == '') {
                 $validfrom = null;
             }
-            else
-            {
-                $datetimeobj = new Date_Time_Converter(trim(Yii::app()->request->getPost('validfrom')), $dateformatdetails['phpdate'] . ' H:i');
+            else {
+                $datetimeobj = new Date_Time_Converter(
+                    trim($request->getPost('validfrom')),
+                    $dateformatdetails['phpdate'] . ' H:i'
+                );
                 $validfrom = $datetimeobj->convert('Y-m-d H:i:s');
             }
-            if (trim(Yii::app()->request->getPost('validuntil')) == '')
-            {
+
+            if (trim(Yii::app()->request->getPost('validuntil')) == '') {
                 $validuntil = null;
             }
-            else
-            {
-                $datetimeobj = new Date_Time_Converter(trim(Yii::app()->request->getPost('validuntil')), $dateformatdetails['phpdate'] . ' H:i');
+            else {
+                $datetimeobj = new Date_Time_Converter(
+                    trim($request->getPost('validuntil')),
+                    $dateformatdetails['phpdate'] . ' H:i'
+                );
                 $validuntil = $datetimeobj->convert('Y-m-d H:i:s');
             }
 
-            $sanitizedtoken = sanitize_token(Yii::app()->request->getPost('token'));
-
-            /* Mdekker: commented out this block as it doesn't respect tokenlength
-             * or existing tokens and was always handled by the tokenify action as
-             * the ui still suggests
-            if (empty($sanitizedtoken))
-            {
-                $isvalidtoken = false;
-                while ($isvalidtoken == false)
-                {
-                    $newtoken = randomChars(15);
-                    if (!isset($existingtokens[$newtoken]))
-                    {
-                        $isvalidtoken = true;
-                        $existingtokens[$newtoken] = null;
-                    }
-                }
-                $sanitizedtoken = $newtoken;
-            }
-            */
-
-
+            $sanitizedtoken = sanitize_token($request->getPost('token'));
 
             $aData = array(
-            'firstname' => Yii::app()->request->getPost('firstname'),
-            'lastname' => Yii::app()->request->getPost('lastname'),
-            'email' => Yii::app()->request->getPost('email'),
-            'emailstatus' => Yii::app()->request->getPost('emailstatus'),
-            'token' => $sanitizedtoken,
-            'language' => sanitize_languagecode(Yii::app()->request->getPost('language')),
-            'sent' => Yii::app()->request->getPost('sent'),
-            'remindersent' => Yii::app()->request->getPost('remindersent'),
-            'completed' => Yii::app()->request->getPost('completed'),
-            'usesleft' => Yii::app()->request->getPost('usesleft'),
-            'validfrom' => $validfrom,
-            'validuntil' => $validuntil,
+                'firstname' => flattenText($request->getPost('firstname')),
+                'lastname' => flattenText($request->getPost('lastname')),
+                'email' => flattenText($request->getPost('email')),
+                'emailstatus' => flattenText($request->getPost('emailstatus')),
+                'token' => $sanitizedtoken,
+                'language' => sanitize_languagecode($request->getPost('language')),
+                'sent' => flattenText($request->getPost('sent')),
+                'remindersent' => flattenText($request->getPost('remindersent')),
+                'completed' => flattenText($request->getPost('completed')),
+                'usesleft' => flattenText($request->getPost('usesleft')),
+                'validfrom' => $validfrom,
+                'validuntil' => $validuntil,
             );
 
-            // add attributes
+            // Add attributes
             $attrfieldnames = Survey::model()->findByPk($iSurveyId)->tokenAttributes;
             $aTokenFieldNames=Yii::app()->db->getSchema()->getTable("{{tokens_$iSurveyId}}",true);
             $aTokenFieldNames=array_keys($aTokenFieldNames->columns);
-            foreach ($attrfieldnames as $attr_name => $desc)
-            {
-                if(!in_array($attr_name,$aTokenFieldNames)) continue;
+            foreach ($attrfieldnames as $attr_name => $desc) {
+                if(!in_array($attr_name,$aTokenFieldNames)) {
+                    continue;
+                }
                 $value = Yii::app()->getRequest()->getPost($attr_name);
-                if ($desc['mandatory'] == 'Y' && trim($value) == '')
-                    $this->getController()->error(sprintf(gT('%s cannot be left empty'), $desc['description']));
+                if ($desc['mandatory'] == 'Y' && trim($value) == '') {
+                    Yii::app()->setFlashMessage(sprintf(gT('%s cannot be left empty'), $desc['description']), 'error');
+                    $this->getController()->refresh();
+                }
                 $aData[$attr_name] = Yii::app()->getRequest()->getPost($attr_name);
             }
 
             $udresult = Token::model($iSurveyId)->findAll("token <> '' and token = '$sanitizedtoken'");
-            if (count($udresult) == 0)
-            {
+            if (count($udresult) == 0) {
                 // AutoExecute
                 $token = Token::create($iSurveyId);
                 $token->setAttributes($aData, false);
                 $inresult = $token->save();
-                $aData['success'] = true;
+                $aData['success'] = $inresult;
+                $aData['errors'] = $token->getErrors();
             }
-            else
-            {
+            else {
                 $aData['success'] = false;
+                $aData['errors'] = array(
+                    'token' => array(gT("There is already an entry with that exact token in the table. The same token cannot be used in multiple entries."))
+                );
             }
 
             $aData['thissurvey'] = getSurveyInfo($iSurveyId);
             $aData['surveyid'] = $iSurveyId;
+            $aData['iTokenLength'] = !empty(Token::model($iSurveyId)->survey->tokenlength) ? Token::model($iSurveyId)->survey->tokenlength : 15;
 
             $aData['sidemenu']['state'] = false;
 
             $this->_renderWrappedTemplate('token', array( 'addtokenpost'), $aData);
         }
-        else
-        {
+        else {
             self::_handletokenform($iSurveyId, "addnew");
         }
     }
 
     /**
-    * Edit Tokens
-    */
-    function edit($iSurveyId, $iTokenId)
+     * Edit Tokens
+     * @param int $iSurveyId
+     * @param int $iTokenId
+     * @param boolean $ajax
+     * @return false|null
+     * @todo When is this function used without Ajax?
+     */
+    public function edit($iSurveyId, $iTokenId, $ajax = false)
     {
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
         $iSurveyId = sanitize_int($iSurveyId);
         $iTokenId = sanitize_int($iTokenId);
-        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update'))
-        {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
-            $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
+
+        // Check permission
+        if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update')) {
+            if ($ajax) {
+                eT("You do not have permission to access this page.");
+                return false;
+            }
+            else {
+                Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
+                $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
+            }
         }
-        // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
+
+        // Check to see if a token table exists for this survey
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
-        if (!$bTokenExists) //If no tokens table exists
-        {
+        if (!$bTokenExists) { //If no tokens table exists
             self::_newtokentable($iSurveyId);
         }
 
         Yii::app()->loadHelper("surveytranslator");
         $dateformatdetails = getDateFormatData(Yii::app()->session['dateformat']);
 
-        if (Yii::app()->request->getPost('subaction'))
-        {
+        $request = Yii::app()->request;
 
+        if ($request->getPost('subaction')) {
+
+            Yii::import('application.helpers.admin.ajax_helper', true);
             Yii::import('application.libraries.Date_Time_Converter', true);
-            if (trim(Yii::app()->request->getPost('validfrom')) == '')
-            {
+            if (trim($request->getPost('validfrom')) == '') {
                 $_POST['validfrom'] = null;
             }
-            else
-            {
-                $datetimeobj = new Date_Time_Converter(trim(Yii::app()->request->getPost('validfrom')), $dateformatdetails['phpdate'] . ' H:i');
+            else {
+                $datetimeobj = new Date_Time_Converter(trim($request->getPost('validfrom')), $dateformatdetails['phpdate'] . ' H:i');
                 $_POST['validfrom'] = $datetimeobj->convert('Y-m-d H:i:s');
             }
-            if (trim(Yii::app()->request->getPost('validuntil')) == '')
-            {
+            if (trim($request->getPost('validuntil')) == '') {
                 $_POST['validuntil'] = null;
             }
-            else
-            {
-                $datetimeobj = new Date_Time_Converter(trim(Yii::app()->request->getPost('validuntil')), $dateformatdetails['phpdate'] . ' H:i');
+            else {
+                $datetimeobj = new Date_Time_Converter(trim($request->getPost('validuntil')), $dateformatdetails['phpdate'] . ' H:i');
                 $_POST['validuntil'] = $datetimeobj->convert('Y-m-d H:i:s');
             }
 
-            $aData['thissurvey'] = getSurveyInfo($iSurveyId);
-            $aData['surveyid'] = $iSurveyId;
+            $aTokenData['firstname'] = flattenText($request->getPost('firstname'));
+            $aTokenData['lastname'] = flattenText($request->getPost('lastname'));
+            $aTokenData['email'] = flattenText($request->getPost('email'));
+            $aTokenData['emailstatus'] = flattenText($request->getPost('emailstatus'));
+            $sSanitizedToken = sanitize_token($request->getPost('token'));
+            $aTokenData['token'] = $sSanitizedToken;
+            $aTokenData['language'] = sanitize_languagecode($request->getPost('language'));
+            $aTokenData['sent'] = flattenText($request->getPost('sent'));
+            $aTokenData['completed'] = flattenText($request->getPost('completed'));
+            $aTokenData['usesleft'] = flattenText($request->getPost('usesleft'));
+            $aTokenData['validfrom'] = $request->getPost('validfrom');
+            $aTokenData['validuntil'] = $request->getPost('validuntil');
+            $aTokenData['remindersent'] = flattenText($request->getPost('remindersent'));
+            $aTokenData['remindercount'] = intval(flattenText($request->getPost('remindercount')));
+            $udresult = Token::model($iSurveyId)->findAll("tid <> '$iTokenId' and token <> '' and token = '$sSanitizedToken'");
 
-            $aTokenData['firstname'] = Yii::app()->request->getPost('firstname');
-            $aTokenData['lastname'] = Yii::app()->request->getPost('lastname');
-            $aTokenData['email'] = Yii::app()->request->getPost('email');
-            $aTokenData['emailstatus'] = Yii::app()->request->getPost('emailstatus');
-            $santitizedtoken = sanitize_token(Yii::app()->request->getPost('token'));
-            $aTokenData['token'] = $santitizedtoken;
-            $aTokenData['language'] = sanitize_languagecode(Yii::app()->request->getPost('language'));
-            $aTokenData['sent'] = Yii::app()->request->getPost('sent');
-            $aTokenData['completed'] = Yii::app()->request->getPost('completed');
-            $aTokenData['usesleft'] = Yii::app()->request->getPost('usesleft');
-            $aTokenData['validfrom'] = Yii::app()->request->getPost('validfrom');
-            $aTokenData['validuntil'] = Yii::app()->request->getPost('validuntil');
-            $aTokenData['remindersent'] = Yii::app()->request->getPost('remindersent');
-            $aTokenData['remindercount'] = intval(Yii::app()->request->getPost('remindercount'));
-            $udresult = Token::model($iSurveyId)->findAll("tid <> '$iTokenId' and token <> '' and token = '$santitizedtoken'");
-
-            if (count($udresult) == 0)
-            {
-                //$aTokenData = array();
-                $attrfieldnames = $udresult[0]->survey->tokenAttributes;
-                foreach ($attrfieldnames as $attr_name => $desc)
-                {
-
-                    $value = Yii::app()->request->getPost($attr_name);
-                    if ($desc['mandatory'] == 'Y' && trim($value) == '')
-                        $this->getController()->error(sprintf(gT('%s cannot be left empty'), $desc['description']));
-                    $aTokenData[$attr_name] = Yii::app()->request->getPost($attr_name);
+            if (count($udresult) == 0) {
+                $attrfieldnames = Survey::model()->findByPk($iSurveyId)->tokenAttributes;
+                foreach ($attrfieldnames as $attr_name => $desc) {
+                    $value = $request->getPost($attr_name);
+                    if ($desc['mandatory'] == 'Y' && trim($value) == '') {
+                        Yii::app()->setFlashMessage(sprintf(gT('%s cannot be left empty'), $desc['description']), 'error');
+                        $this->getController()->refresh();
+                    }
+                    $aTokenData[$attr_name] = $request->getPost($attr_name);
                 }
 
                 $token = Token::model($iSurveyId)->findByPk($iTokenId);
-                foreach ($aTokenData as $k => $v)
+                foreach ($aTokenData as $k => $v) {
                     $token->$k = $v;
-                $token->save();
+                }
 
-                $aData['sidemenu']['state'] = false;
-                $this->_renderWrappedTemplate('token', array( 'message' => array(
-                'title' => gT("Success"),
-                'message' => gT("The token entry was successfully updated.") . "<br /><br />\n"
-                . "\t\t<input class='btn btn-default btn-lg' type='button' class='btn btn-large btn-default' value='" . gT("Display tokens") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/browse/surveyid/$iSurveyId/") . "', '_top')\" />\n"
-                )), $aData);
+                $result = $token->save();
+
+                if ($result) {
+                    \ls\ajax\AjaxHelper::outputSuccess(gT('The survey participant was successfully updated.'));
+                }
+                else {
+                    $errors = $token->getErrors();
+                    $firstError = reset($errors);
+                    \ls\ajax\AjaxHelper::outputError($firstError[0]);
+                }
             }
-            else
-            {
-                $aData['sidemenu']['state'] = false;
-                $this->_renderWrappedTemplate('token', array( 'message' => array(
-                'title' => gT("Failed"),
-                'message' => gT("There is already an entry with that exact token in the table. The same token cannot be used in multiple entries.") . "<br /><br />\n"
-                . "\t\t<input class='btn btn-default btn-lg' type='button' value='" . gT("Show this token entry") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/edit/surveyid/$iSurveyId/tokenid/$iTokenId") . "', '_top')\" />\n"
-                )));
+            else {
+                \ls\ajax\AjaxHelper::outputError(gT('There is already an entry with that exact token in the table. The same token cannot be used in multiple entries.'));
             }
         }
-        else
-        {
-            $this->_handletokenform($iSurveyId, "edit", $iTokenId);
+        else {
+            $this->_handletokenform($iSurveyId, "edit", $iTokenId, $ajax);
         }
     }
 
     /**
-    * Delete tokens
-    */
-    function delete($iSurveyID)
+     * Delete tokens
+     * @param int $iSurveyID
+     * @return void
+     */
+    public function delete($iSurveyID)
     {
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
         $iSurveyID = sanitize_int($iSurveyID);
         $sTokenIDs = Yii::app()->request->getPost('tid');
         /* Check permissions */
         if (!Permission::model()->hasSurveyPermission($iSurveyID, 'tokens', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyID}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -922,6 +777,11 @@ class tokens extends Survey_Common_Action
         {
             self::_newtokentable($iSurveyID);
         }
+
+        $beforeTokenDelete = new PluginEvent('beforeTokenDelete');
+        $beforeTokenDelete->set('sTokenIds',$sTokenIDs );
+        $beforeTokenDelete->set('iSurveyID',$iSurveyID );
+        App()->getPluginManager()->dispatchEvent($beforeTokenDelete);
 
         if (Permission::model()->hasSurveyPermission($iSurveyID, 'tokens', 'delete'))
         {
@@ -936,14 +796,17 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Add dummy tokens form
-    */
-    function addDummies($iSurveyId, $subaction = '')
+     * Add dummy tokens form
+     * @param int $iSurveyId
+     * @param string $subaction
+     * @return void
+     */
+    public function addDummies($iSurveyId, $subaction = '')
     {
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'create'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
 
@@ -956,6 +819,7 @@ class tokens extends Survey_Common_Action
 
 
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
+        $aData = array();
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
@@ -965,6 +829,7 @@ class tokens extends Survey_Common_Action
 
         if (!empty($subaction) && $subaction == 'add')
         {
+            $message = '';
             $this->getController()->loadLibrary('Date_Time_Converter');
             $dateformatdetails = getDateFormatData(Yii::app()->session['dateformat']);
 
@@ -988,17 +853,15 @@ class tokens extends Survey_Common_Action
                 $_POST['validuntil'] = $datetimeobj->convert('Y-m-d H:i:s');
             }
 
-            $santitizedtoken = '';
-
-            $aData = array('firstname' => Yii::app()->request->getPost('firstname'),
-            'lastname' => Yii::app()->request->getPost('lastname'),
-            'email' => Yii::app()->request->getPost('email'),
-            'token' => $santitizedtoken,
+            $aData = array('firstname' => flattenText(Yii::app()->request->getPost('firstname')),
+            'lastname' => flattenText(Yii::app()->request->getPost('lastname')),
+            'email' => flattenText(Yii::app()->request->getPost('email')),
+            'token' => '',
             'language' => sanitize_languagecode(Yii::app()->request->getPost('language')),
             'sent' => 'N',
             'remindersent' => 'N',
             'completed' => 'N',
-            'usesleft' => Yii::app()->request->getPost('usesleft'),
+            'usesleft' => flattenText(Yii::app()->request->getPost('usesleft')),
             'validfrom' => Yii::app()->request->getPost('validfrom'),
             'validuntil' => Yii::app()->request->getPost('validuntil'));
 
@@ -1006,14 +869,16 @@ class tokens extends Survey_Common_Action
             $attrfieldnames = getTokenFieldsAndNames($iSurveyId,true);
             foreach ($attrfieldnames as $attr_name => $desc)
             {
-                $value = Yii::app()->request->getPost($attr_name);
-                if ($desc['mandatory'] == 'Y' && trim($value) == '')
-                    $this->getController()->error(sprintf(gT('%s cannot be left empty'), $desc['description']));
-                $aData[$attr_name] = Yii::app()->request->getPost($attr_name);
+                $value = flattenText(Yii::app()->request->getPost($attr_name));
+                if ($desc['mandatory'] == 'Y' && trim($value) == '') {
+                    Yii::app()->setFlashMessage(sprintf(gT('%s cannot be left empty'), $desc['description']), 'error');
+                    $this->getController()->refresh();
+                }
+                $aData[$attr_name] = $value;
             }
 
             $amount = sanitize_int(Yii::app()->request->getPost('amount'));
-            $tokenlength = sanitize_int(Yii::app()->request->getPost('tokenlen'));
+            $iTokenLength = sanitize_int(Yii::app()->request->getPost('tokenlen'));
 
             // Fill an array with all existing tokens
             $existingtokens = array();
@@ -1041,7 +906,7 @@ class tokens extends Survey_Common_Action
 
                 $attempts = 0;
                 do {
-                    $token->token = Yii::app()->securityManager->generateRandomString($tokenlength);
+                    $token->token = Token::generateRandomToken($iTokenLength);
                     $attempts++;
                 } while (isset($existingtokens[$token->token]) && $attempts < 50);
 
@@ -1059,7 +924,7 @@ class tokens extends Survey_Common_Action
             if(!$invalidtokencount)
             {
                 $aData['success'] = true;
-                Yii::app()->session['flashmessage'] = gT("New dummy tokens were added.");
+                Yii::app()->session['flashmessage'] = gT("New dummy participants were added.");
                 //admin/tokens/sa/browse/surveyid/652779//
                 $this->getController()->redirect(array("/admin/tokens/sa/browse/surveyid/{$iSurveyId}"));
             }
@@ -1068,10 +933,10 @@ class tokens extends Survey_Common_Action
                 $aData['success'] = false;
                 $message= array(
                 'title' => gT("Failed"),
-                'message' => "<p>".sprintf(gT("Only %s new dummy tokens were added after %s trials."),$newDummyToken,$invalidtokencount)
+                'message' => "<p>".sprintf(gT("Only %s new dummy participants were added after %s trials."),$newDummyToken,$invalidtokencount)
                 .gT("Try with a bigger token length.")."</p>"
                 ."\n<input type='button' value='"
-                . gT("Display tokens") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/browse/surveyid/$iSurveyId") . "', '_top')\" />\n"
+                . gT("Browse participants") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/browse/surveyid/$iSurveyId") . "', '_top')\" />\n"
                 );
             }
 
@@ -1080,12 +945,12 @@ class tokens extends Survey_Common_Action
         }
         else
         {
-            $tokenlength = !empty(Token::model($iSurveyId)->survey->tokenlength) ? Token::model($iSurveyId)->survey->tokenlength : 15;
+            $iTokenLength = !empty(Token::model($iSurveyId)->survey->tokenlength) ? Token::model($iSurveyId)->survey->tokenlength : 15;
 
             $thissurvey = getSurveyInfo($iSurveyId);
             $aData['thissurvey'] = $thissurvey;
             $aData['surveyid'] = $iSurveyId;
-            $aData['tokenlength'] = $tokenlength;
+            $aData['tokenlength'] = $iTokenLength;
             $aData['dateformatdetails'] = getDateFormatData(Yii::app()->session['dateformat'],App()->language);
             $aData['aAttributeFields']=GetParticipantAttributes($iSurveyId);
             $this->_renderWrappedTemplate('token', array( 'dummytokenform'), $aData);
@@ -1093,14 +958,16 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Handle managetokenattributes action
-    */
-    function managetokenattributes($iSurveyId)
+     * Handle managetokenattributes action
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function managetokenattributes($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -1112,6 +979,7 @@ class tokens extends Survey_Common_Action
         Yii::app()->loadHelper("surveytranslator");
 
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
+        $aData = array();
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
@@ -1150,14 +1018,16 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Update token attributes
-    */
-    function updatetokenattributes($iSurveyId)
+     * Update token attributes
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function updatetokenattributes($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -1190,9 +1060,11 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Delete token attributes
-    */
-    function deletetokenattributes($iSurveyId)
+     * Delete token attributes
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function deletetokenattributes($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -1204,19 +1076,18 @@ class tokens extends Survey_Common_Action
         }
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect($this->getController()->createUrl("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
 
+        $aData = array();
         $aData['thissurvey'] = getSurveyInfo($iSurveyId);
         $aData['surveyid'] = $iSurveyId;
         $confirm=Yii::app()->request->getPost('confirm','');
         $cancel=Yii::app()->request->getPost('cancel','');
         $tokenfields = getAttributeFieldNames($iSurveyId);
         $sAttributeToDelete=Yii::app()->request->getPost('deleteattribute','');
-        tracevar($sAttributeToDelete);
         if(!in_array($sAttributeToDelete,$tokenfields)) $sAttributeToDelete=false;
-        tracevar($sAttributeToDelete);
         if ($cancel=='cancel')
         {
             Yii::app()->getController()->redirect(Yii::app()->getController()->createUrl("/admin/tokens/sa/managetokenattributes/surveyid/$iSurveyId"));
@@ -1257,14 +1128,16 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * updatetokenattributedescriptions action
-    */
-    function updatetokenattributedescriptions($iSurveyId)
+     * updatetokenattributedescriptions action
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function updatetokenattributedescriptions($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -1284,8 +1157,8 @@ class tokens extends Survey_Common_Action
         {
             $fieldcontents[$fieldname] = array(
             'description' => strip_tags(Yii::app()->request->getPost('description_' . $fieldname)),
-            'mandatory' => Yii::app()->request->getPost('mandatory_' . $fieldname) == 'Y' ? 'Y' : 'N',
-            'show_register' => Yii::app()->request->getPost('show_register_' . $fieldname) == 'Y' ? 'Y' : 'N',
+            'mandatory' => Yii::app()->request->getPost('mandatory_' . $fieldname) == '1' ? 'Y' : 'N',
+            'show_register' => Yii::app()->request->getPost('show_register_' . $fieldname) == '1' ? 'Y' : 'N',
             'cpdbmap' => Yii::app()->request->getPost('cpdbmap_' . $fieldname)
             );
             foreach ($languages as $language)
@@ -1305,17 +1178,22 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Handle email action
-    */
-    function email($iSurveyId, $tokenids = null)
+     * Handle email action
+     * @param int $iSurveyId
+     * @param string $tokenids Int list separated with |?
+     * @return void
+     */
+    public function email($iSurveyId, $tokenids = null)
     {
         $iSurveyId = sanitize_int($iSurveyId);
+        $aData = array();
 
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
+
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
         if (!$bTokenExists) //If no tokens table exists
@@ -1329,6 +1207,15 @@ class tokens extends Survey_Common_Action
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;  // Close button
+
+        if(Yii::app()->request->getParam('action')=="remind")
+        {
+            $aData['token_bar']['sendreminderbutton'] = true;
+        }
+        else
+        {
+            $aData['token_bar']['sendinvitationbutton'] = true;  // Invitation button
+        }
 
         $aTokenIds=$tokenids;
         if (empty($tokenids))
@@ -1380,7 +1267,7 @@ class tokens extends Survey_Common_Action
         $aData['ishtml'] = $bHtml;
         $iMaxEmails = Yii::app()->getConfig('maxemails');
 
-        if (Yii::app()->request->getPost('bypassbademails') == 'Y')
+        if (Yii::app()->request->getPost('bypassbademails') == '1')
         {
             $SQLemailstatuscondition = "emailstatus = 'OK'";
         }
@@ -1512,12 +1399,12 @@ class tokens extends Survey_Common_Action
                     $modsubject = Replacefields($modsubject, $fieldsarray);
                     $modmessage = Replacefields($modmessage, $fieldsarray);
 
-                    if (!App()->request->getPost('bypassdatecontrol') && trim($emrow['validfrom']) != '' && convertDateTimeFormat($emrow['validfrom'], 'Y-m-d H:i:s', 'U') * 1 > date('U') * 1)
+                    if (!App()->request->getPost('bypassdatecontrol')=='1' && trim($emrow['validfrom']) != '' && convertDateTimeFormat($emrow['validfrom'], 'Y-m-d H:i:s', 'U') * 1 > date('U') * 1)
                     {
                         $tokenoutput .= $emrow['tid'] . " " . htmlspecialchars(ReplaceFields(gT("Email to {FIRSTNAME} {LASTNAME} ({EMAIL}) delayed: Token is not yet valid.",'unescaped'), $fieldsarray)). "<br />";
                         $bInvalidDate=true;
                     }
-                    elseif (!App()->request->getPost('bypassdatecontrol') && trim($emrow['validuntil']) != '' && convertDateTimeFormat($emrow['validuntil'], 'Y-m-d H:i:s', 'U') * 1 < date('U') * 1)
+                    elseif (!App()->request->getPost('bypassdatecontrol')=='1' && trim($emrow['validuntil']) != '' && convertDateTimeFormat($emrow['validuntil'], 'Y-m-d H:i:s', 'U') * 1 < date('U') * 1)
                     {
                         $tokenoutput .= $emrow['tid'] . " " . htmlspecialchars(ReplaceFields(gT("Email to {FIRSTNAME} {LASTNAME} ({EMAIL}) skipped: Token is not valid anymore.",'unescaped'), $fieldsarray)). "<br />";
                         $bInvalidDate=true;
@@ -1568,7 +1455,9 @@ class tokens extends Survey_Common_Action
                          * token        r       Raw token data.
                          */
                         $event = new PluginEvent('beforeTokenEmail');
+                        $event->set('survey', $iSurveyId);
                         $event->set('type', $sTemplate);
+                        $event->set('model', $sSubAction);
                         $event->set('subject', $modsubject);
                         $event->set('to', $to);
                         $event->set('body', $modmessage);
@@ -1678,6 +1567,7 @@ class tokens extends Survey_Common_Action
             else
             {
                 $aData['sidemenu']['state'] = false;
+
                 $this->_renderWrappedTemplate('token', array( 'message' => array(
                 'title' => gT("Warning"),
                 'message' => gT("There were no eligible emails to send. This will be because none satisfied the criteria of:")
@@ -1692,12 +1582,15 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Export Dialog
-     *
-    */
-    function exportdialog($iSurveyId)
+     * Export Dialog
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function exportdialog($iSurveyId)
     {
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
+        $aData = array();
+
         $aData["surveyinfo"] = $surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=true;
@@ -1709,7 +1602,7 @@ class tokens extends Survey_Common_Action
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'export'))//EXPORT FEATURE SUBMITTED BY PIETERJAN HEYSE
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
@@ -1797,18 +1690,17 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Performs a ldap import
-    *
-    * @access public
-    * @param int $iSurveyId
-    * @return void
-    */
+     * Performs a ldap import
+     * @param int $iSurveyId
+     * @return void
+     */
     public function importldap($iSurveyId)
     {
         $iSurveyId = (int) $iSurveyId;
+        $aData = array();
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'import'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -1841,8 +1733,8 @@ class tokens extends Survey_Common_Action
         }
         else
         {
-            $filterduplicatetoken = (Yii::app()->request->getPost('filterduplicatetoken') && Yii::app()->request->getPost('filterduplicatetoken') == 'on');
-            $filterblankemail = (Yii::app()->request->getPost('filterblankemail') && Yii::app()->request->getPost('filterblankemail') == 'on');
+            $filterduplicatetoken = Yii::app()->request->getPost('filterduplicatetoken') == '1';
+            $filterblankemail = Yii::app()->request->getPost('filterblankemail') == '1';
 
             $ldap_queries = Yii::app()->getConfig('ldap_queries');
             $ldap_server = Yii::app()->getConfig('ldap_server');
@@ -2077,14 +1969,17 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * import from csv
-    */
-    function import($iSurveyId)
+     * import from csv
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function import($iSurveyId)
     {
+        $aData = array();
         $iSurveyId = (int) $iSurveyId;
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'import'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -2101,8 +1996,7 @@ class tokens extends Survey_Common_Action
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;
-
-        App()->getClientScript()->registerScriptFile(Yii::app()->getConfig('adminscripts') . 'tokensimport.js');
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokensimport.js');
         $aEncodings =aEncodingsArray();
 
         if (Yii::app()->request->isPostRequest) // && Yii::app()->request->getPost('subaction')=='upload')
@@ -2118,6 +2012,7 @@ class tokens extends Survey_Common_Action
 
             $aAttrFieldNames = getAttributeFieldNames($iSurveyId);
             $aDuplicateList = array();
+            $aInvalidTokenList= array();
             $aInvalidEmailList = array();
             $aInvalidFormatList = array();
             $aModelErrorList = array();
@@ -2126,22 +2021,11 @@ class tokens extends Survey_Common_Action
             $oFile=CUploadedFile::getInstanceByName("the_file");
             $sPath = Yii::app()->getConfig('tempdir');
             $sFileName = $sPath . '/' . randomChars(20);
-            //$sFileTmpName=$oFile->getTempName();
-            /* More way to validate CSV ?
-            $aCsvMimetypes = array(
-                'text/csv',
-                'text/plain',
-                'application/csv',
-                'text/comma-separated-values',
-                'application/excel',
-                'application/vnd.ms-excel',
-                'application/vnd.msexcel',
-                'text/anytext',
-                'application/octet-stream',
-                'application/txt',
-            );
-            */
-            if(strtolower($oFile->getExtensionName())!='csv')// && !in_array($oFile->getType(),$aCsvMimetypes)
+            if ($_FILES['the_file']['error']==1 || $_FILES['the_file']['error']==2)
+            {
+                Yii::app()->setFlashMessage(sprintf(gT("Sorry, this file is too large. Only files up to %01.2f MB are allowed."), getMaximumFileUploadSize()/1024/1024),'error');
+            }
+            elseif(strtolower($oFile->getExtensionName())!='csv')// && !in_array($oFile->getType(),$aCsvMimetypes)
             {
                 Yii::app()->setFlashMessage(gT("Only CSV files are allowed."),'error');
             }
@@ -2267,6 +2151,7 @@ class tokens extends Survey_Common_Action
                         }
                         $bDuplicateFound = false;
                         $bInvalidEmail = false;
+                        $bInvalidToken = false;
                         $aWriteArray['email'] = isset($aWriteArray['email']) ? trim($aWriteArray['email']) : "";
                         $aWriteArray['firstname'] = isset($aWriteArray['firstname']) ? $aWriteArray['firstname'] : "";
                         $aWriteArray['lastname'] = isset($aWriteArray['lastname']) ? $aWriteArray['lastname'] : "";
@@ -2321,11 +2206,15 @@ class tokens extends Survey_Common_Action
                                     }
                                 }
                             }
-                        }
+                         }
 
-                        if (!$bDuplicateFound && !$bInvalidEmail && isset($aWriteArray['token']))
+                        if (!$bDuplicateFound && !$bInvalidEmail && isset($aWriteArray['token']) && trim($aWriteArray['token'])!='')
                         {
-                            $aWriteArray['token'] = sanitize_token($aWriteArray['token']);
+                            if (trim($aWriteArray['token']) != sanitize_token($aWriteArray['token']))
+                            {
+                                $aInvalidTokenList[] = sprintf(gT("Line %s : %s %s (%s) - token : %s"),$iRecordCount,CHtml::encode($aWriteArray['firstname']),CHtml::encode($aWriteArray['lastname']),CHtml::encode($aWriteArray['email']),CHtml::encode($aWriteArray['token']));
+                                $bInvalidToken=true;
+                            }
                             // We allways search for duplicate token (it's in model. Allow to reset or update token ?
                             if(Token::model($iSurveyId)->count("token=:token",array(":token"=>$aWriteArray['token'])))
                             {
@@ -2334,7 +2223,7 @@ class tokens extends Survey_Common_Action
                             }
                         }
 
-                        if (!$bDuplicateFound && !$bInvalidEmail)
+                        if (!$bDuplicateFound && !$bInvalidEmail && !$bInvalidToken)
                         {
                             // unset all empty value
                             foreach ($aWriteArray as $key=>$value)
@@ -2357,8 +2246,8 @@ class tokens extends Survey_Common_Action
                             }
                             if (!$oToken->save())
                             {
-                                tracevar($oToken->getErrors());
-                                $aModelErrorList[] =  sprintf(gT("Line %s : %s"),$iRecordCount,Chtml::errorSummary($oToken));
+                                $errors = ($oToken->getErrors());
+                                $aModelErrorList[] =  sprintf(gT("Line %s : %s"),$iRecordCount,print_r($errors,true));
                             }
                             else
                             {
@@ -2370,15 +2259,14 @@ class tokens extends Survey_Common_Action
                     $iRecordCount++;
                 }
                 $iRecordCount = $iRecordCount - 1;
-
                 unlink($sFileName);
-
                 $aData['aTokenListArray'] = $aTokenListArray;// Big array in memory, just for success ?
                 $aData['iRecordImported'] = $iRecordImported;
                 $aData['iRecordOk'] = $iRecordOk;
                 $aData['iRecordCount'] = $iRecordCount;
                 $aData['aFirstLine'] = $aFirstLine;// Seem not needed
                 $aData['aDuplicateList'] = $aDuplicateList;
+                $aData['aInvalidTokenList'] = $aInvalidTokenList;
                 $aData['aInvalidFormatList'] = $aInvalidFormatList;
                 $aData['aInvalidEmailList'] = $aInvalidEmailList;
                 $aData['aModelErrorList'] = $aModelErrorList;
@@ -2387,14 +2275,14 @@ class tokens extends Survey_Common_Action
                 $aData['iSurveyId'] = $aData['surveyid'] = $iSurveyId;
                 $aData['aInvalideAttrFieldName'] = $aInvalideAttrFieldName;
                 $aData['aMissingAttrFieldName'] = $aMissingAttrFieldName;
-
-                $this->_renderWrappedTemplate('token', array( 'csvpost'), $aData);
+                $this->_renderWrappedTemplate('token', array( 'csvimportresult'), $aData);
                 Yii::app()->end();
             }
         }
 
         // If there are error with file : show the form
         $aData['aEncodings'] = $aEncodings;
+        asort($aData['aEncodings']);
         $aData['iSurveyId'] = $iSurveyId;
         $aData['thissurvey'] = getSurveyInfo($iSurveyId);
         $aData['surveyid'] = $iSurveyId;
@@ -2404,27 +2292,39 @@ class tokens extends Survey_Common_Action
         unset($aTokenTableFields['remindercount']);
         unset($aTokenTableFields['usesleft']);
         foreach ($aTokenTableFields as $sKey=>$sValue)
+        {
+            if ($sValue['description']!=$sKey)
             {
-                if ($sValue['description']!=$sKey)
-                {
-                   $sValue['description'] .= ' - '.$sKey;
-                }
-                $aNewTokenTableFields[$sKey]= $sValue['description'];
+               $sValue['description'] .= ' - '.$sKey;
             }
-            $aData['aTokenTableFields'] = $aNewTokenTableFields;
-            $this->_renderWrappedTemplate('token', array( 'csvupload'), $aData);
+            $aNewTokenTableFields[$sKey]= $sValue['description'];
+        }
+        $aData['aTokenTableFields'] = $aNewTokenTableFields;
+
+        // Get default character set from global settings
+        $thischaracterset = getGlobalSetting('characterset');
+        // If no encoding was set yet, use the old "auto" default
+        if($thischaracterset == "")
+        {
+            $thischaracterset = "auto";
+        }
+        $aData['thischaracterset'] = $thischaracterset;
+
+        $this->_renderWrappedTemplate('token', array( 'csvupload'), $aData);
 
     }
 
     /**
-    * Generate tokens
-    */
-    function tokenify($iSurveyId)
+     * Generate tokens
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function tokenify($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -2433,6 +2333,7 @@ class tokens extends Survey_Common_Action
         {
             self::_newtokentable($iSurveyId);
         }
+        $aData = array();
         $aData['thissurvey'] = getSurveyInfo($iSurveyId);
         $aData['surveyid'] = $iSurveyId;
 
@@ -2441,7 +2342,7 @@ class tokens extends Survey_Common_Action
         $aData["surveyinfo"] = $surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
-        $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;
+
 
         if (!Yii::app()->request->getParam('ok'))
         {
@@ -2449,12 +2350,11 @@ class tokens extends Survey_Common_Action
             $this->_renderWrappedTemplate('token', array( 'message' => array(
             'title' => gT("Create tokens"),
             'message' => gT("Clicking 'Yes' will generate tokens for all those in this token list that have not been issued one. Continue?") . "<br /><br />\n"
-            . "<input class='btn btn-default' type='submit' value='"
+            . "<input class='btn btn-default btn-lg' type='submit' value='"
             . gT("Yes") . "' onclick=\"" . convertGETtoPOST($this->getController()->createUrl("admin/tokens/sa/tokenify/surveyid/$iSurveyId", array('ok'=>'Y'))) . "\" />\n"
-            . "<input class='btn btn-default' type='submit' value='"
+            . "<input class='btn btn-default  btn-lg' type='submit' value='"
             . gT("No") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/index/surveyid/$iSurveyId") . "', '_top')\" />\n"
             . "<br />\n"
-            . '<p><a href="'.App()->createUrl('admin/tokens/sa/index/surveyid/'.$iSurveyId).'" title="" class="btn btn-default btn-lg">'.gT("Ok").'</a></p>'
             )), $aData);
         }
         else
@@ -2468,11 +2368,13 @@ class tokens extends Survey_Common_Action
                 $aData['success'] = false;
                 $message = ngT('Only {n} token has been created.|Only {n} tokens have been created.',$newtokencount)
                          .ngT('Need {n} token.|Need {n} tokens.',$neededtokencount);
+                $message .= '<p><a href="'.App()->createUrl('admin/tokens/sa/index/surveyid/'.$iSurveyId).'" title="" class="btn btn-default btn-lg">'.gT("Ok").'</a></p>';
             }
             else
             {
                 $aData['success'] = true;
                 $message = ngT('{n} token has been created.|{n} tokens have been created.',$newtokencount);
+                $message .= '<p><a href="'.App()->createUrl('admin/tokens/sa/index/surveyid/'.$iSurveyId).'" title="" class="btn btn-default btn-lg">'.gT("Ok").'</a></p>';
             }
             $this->_renderWrappedTemplate('token', array( 'message' => array(
             'title' => gT("Create tokens"),
@@ -2482,14 +2384,16 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Remove Token Database
-    */
-    function kill($iSurveyId)
+     * Remove Token Database
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function kill($iSurveyId)
     {
         $iSurveyId = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'delete'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -2498,6 +2402,7 @@ class tokens extends Survey_Common_Action
         {
             self::_newtokentable($iSurveyId);
         }
+        $aData = array();
         $aData['thissurvey'] = getSurveyInfo($iSurveyId);
         $aData['surveyid'] = $iSurveyId;
 
@@ -2511,11 +2416,11 @@ class tokens extends Survey_Common_Action
         {
             $aData['sidemenu']['state'] = false;
             $this->_renderWrappedTemplate('token', array( 'message' => array(
-            'title' => gT("Delete Tokens Table"),
+            'title' => gT("Delete survey participants table"),
             'message' => gT("If you delete this table tokens will no longer be required to access this survey.") . "<br />" . gT("A backup of this table will be made if you proceed. Your system administrator will be able to access this table.") . "<br />\n"
             . sprintf('("%s")<br /><br />', $newtableDisplay)
             . "<input class='btn btn-danger' type='submit' value='"
-            . gT("Delete Tokens") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/kill/surveyid/{$iSurveyId}/ok/Y") . "', '_top')\" />\n"
+            . gT("Delete table") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/kill/surveyid/{$iSurveyId}/ok/Y") . "', '_top')\" />\n"
             . "<input class='btn btn-default' type='submit' value='"
             . gT("Cancel") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/index/surveyid/{$iSurveyId}") . "', '_top')\" />\n"
             )), $aData);
@@ -2530,7 +2435,7 @@ class tokens extends Survey_Common_Action
 
             $aData['sidemenu']['state'] = false;
             $this->_renderWrappedTemplate('token', array( 'message' => array(
-            'title' => gT("Delete Tokens Table"),
+            'title' => gT("Delete survey participants table"),
             'message' => '<br />' . gT("The tokens table has now been removed and tokens are no longer required to access this survey.") . "<br /> " . gT("A backup of this table has been made and can be accessed by your system administrator.") . "<br />\n"
             . sprintf('("%s")<br /><br />', $newtableDisplay)
             . "<input type='submit' class='btn btn-default' value='"
@@ -2541,12 +2446,16 @@ class tokens extends Survey_Common_Action
         }
     }
 
-    function bouncesettings($iSurveyId)
+    /**
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function bouncesettings($iSurveyId)
     {
         $iSurveyId = $iSurveyID = sanitize_int($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update'))
         {
-            Yii::app()->session['flashmessage'] = gT("You do not have sufficient rights to access this page.");
+            Yii::app()->session['flashmessage'] = gT("You do not have permission to access this page.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
@@ -2595,10 +2504,14 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Handle token form for addnew/edit actions
-    * @param string $subaction
-    */
-    function _handletokenform($iSurveyId, $subaction, $iTokenId="")
+     * Handle token form for addnew/edit actions
+     * @param int $iSurveyId
+     * @param string $subaction
+     * @param int $iTokenId
+     * @param boolean $ajax
+     * @return void
+     */
+    public function _handletokenform($iSurveyId, $subaction, $iTokenId="", $ajax=false)
     {
         // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
@@ -2613,6 +2526,14 @@ class tokens extends Survey_Common_Action
             $aData['tokenid'] = $iTokenId;
             $aData['tokendata'] = Token::model($iSurveyId)->findByPk($iTokenId);
         }
+        else
+        {
+            $aData['completed']=null;
+            $aData['sent']=null;
+            $aData['remindersent']=null;
+        }
+
+        $aData['iTokenLength'] = !empty(Token::model($iSurveyId)->survey->tokenlength) ? Token::model($iSurveyId)->survey->tokenlength : 15;
 
         $thissurvey = getSurveyInfo($iSurveyId);
         $aAdditionalAttributeFields = $thissurvey['attributedescriptions'];
@@ -2643,25 +2564,38 @@ class tokens extends Survey_Common_Action
         $aData['subaction'] = $subaction;
         $aData['dateformatdetails'] = getDateFormatData(Yii::app()->session['dateformat']);
 
-        $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
+        $oSurvey = Survey::model()->findByPk($iSurveyId);
+        $surveyinfo = $oSurvey->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['savebutton']['form'] = TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;
-        $this->_renderWrappedTemplate('token', array( 'tokenform'), $aData);
+
+        if ($ajax)
+        {
+            $aData['oSurvey'] = $oSurvey;
+            $aData['ajax'] = true;
+            $this->getController()->renderPartial('/admin/token/tokenform', $aData, false, false);
+        }
+        else
+        {
+            $this->_renderWrappedTemplate('token', array( 'tokenform'), $aData);
+        }
     }
 
     /**
-    * Show dialogs and create a new tokens table
-    */
-    function _newtokentable($iSurveyId)
+     * Show dialogs and create a new tokens table
+     * @param int $iSurveyId
+     * @return void
+     */
+    public function _newtokentable($iSurveyId)
     {
         $aSurveyInfo = getSurveyInfo($iSurveyId);
         if (!Permission::model()->hasSurveyPermission($iSurveyId, 'surveysettings', 'update') && !Permission::model()->hasSurveyPermission($iSurveyId, 'tokens','create'))
         {
-            Yii::app()->session['flashmessage'] = gT("Tokens have not been initialised for this survey.");
+            Yii::app()->session['flashmessage'] = gT("Survey participants have not been initialised for this survey.");
             $this->getController()->redirect(array("/admin/survey/sa/view/surveyid/{$iSurveyId}"));
         }
         $bTokenExists = tableExists('{{tokens_' . $iSurveyId . '}}');
@@ -2676,6 +2610,8 @@ class tokens extends Survey_Common_Action
         // The user have rigth to create token, then don't test right after
         Yii::import('application.helpers.admin.token_helper', true);
 
+        $aData = array();
+
         // Update table, must be CRSF controlled
         if (Yii::app()->request->getPost('createtable') == "Y")
         {
@@ -2683,8 +2619,8 @@ class tokens extends Survey_Common_Action
             $aData['sidemenu']['state'] = false;
             LimeExpressionManager::SetDirtyFlag();  // LimeExpressionManager needs to know about the new token table
             $this->_renderWrappedTemplate('token', array('message' =>array(
-            'title' => gT("Token control"),
-            'message' => gT("A token table has been created for this survey.") . " (\"" . Yii::app()->db->tablePrefix . "tokens_$iSurveyId\")<br /><br />\n"
+            'title' => gT("Survey participants"),
+            'message' => gT("A participant table has been created for this survey.") . " (\"" . Yii::app()->db->tablePrefix . "tokens_$iSurveyId\")<br /><br />\n"
             . "<input type='submit' class='btn btn-default' value='"
             . gT("Continue") . "' onclick=\"window.open('" . $this->getController()->createUrl("admin/tokens/sa/index/surveyid/$iSurveyId") . "', '_top')\" />\n"
             )));
@@ -2723,6 +2659,7 @@ class tokens extends Survey_Common_Action
             //Add any survey_links from the renamed table
             SurveyLink::model()->rebuildLinksFromTokenTable($iSurveyId);
 
+            $aData = array();
             $aData['sidemenu']['state'] = false;
             $this->_renderWrappedTemplate('token', array('message' => array(
             'title' => gT("Import old tokens"),
@@ -2765,12 +2702,13 @@ class tokens extends Survey_Common_Action
     }
 
     /**
-    * Renders template(s) wrapped in header and footer
-    *
-    * @param string $sAction Current action, the folder to fetch views from
-    * @param string|array $aViewUrls View url(s)
-    * @param array $aData Data to be passed on. Optional.
-    */
+     * Renders template(s) wrapped in header and footer
+     *
+     * @param string $sAction Current action, the folder to fetch views from
+     * @param string|array $aViewUrls View url(s)
+     * @param array $aData Data to be passed on. Optional.
+     * @return void
+     */
     protected function _renderWrappedTemplate($sAction = 'token', $aViewUrls = array(), $aData = array())
     {
         $aData['imageurl'] = Yii::app()->getConfig('adminimageurl');

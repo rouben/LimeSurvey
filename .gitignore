@@ -3,11 +3,10 @@
 .idea/*
 .project
 /upload/surveys/*
-/styles/gringegreen/images/Thumbs.db
 /upload/templates/*
 /upload/labels/*
-!/upload/labels/readme.txt
 /tmp/runtime/HTML
+/tmp/runtime/*.log*
 /application/controllers/admin/updater.php
 /tmp/*.html
 /tmp/*.lss
@@ -19,7 +18,6 @@
 /nbproject
 /tmp/assets/*
 !/tmp/assets/.gitignore
-!/tmp/assets/index.html
 /tmp/runtime/cache/*
 *.iml
 
@@ -38,3 +36,16 @@
 .buildpath
 /application/config/config.php
 application/config/_config.php
+*.un~
+!index.html
+!readme.txt
+/tmp/runtime/URI/*.ser
+/tmp/runtime/CSS/*.ser
+/tmp/runtime/twig_cache/*
+launch.json
+# ignore plugins directory by default except LS plugin
+# if you want to add a new distributed plugin : add the directory here
+/plugins/*
+!/plugins/index.html
+!/plugins/Demo/
+!/plugins/AuditLog/

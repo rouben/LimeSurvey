@@ -3417,7 +3417,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   display: inline-block;
 }
 .breadcrumb > li + li:before {
-  content: "\00a0";
+  content: ">";
   padding: 0 5px;
 }
 .pagination {
@@ -3558,7 +3558,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   padding: 3px 7px;
   font-size: 12px;
   font-weight: bold;
-  color: : #fff;
+  color: #fff;
   line-height: 1;
   vertical-align: baseline;
   white-space: nowrap;

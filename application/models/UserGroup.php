@@ -226,7 +226,7 @@ class UserGroup extends LSActiveRecord {
         $button = '<a class="btn btn-default list-btn" data-toggle="tooltip" data-placement="left" title="'.gT('View users').'" href="'.$url.'" role="button"><span class="glyphicon glyphicon-list-alt" ></span></a>';
 
         // Edit user group
-        if(Permission::model()->hasGlobalPermission('users','update'))
+        if(Permission::model()->hasGlobalPermission('usergroups','update'))
         {
             $url = Yii::app()->createUrl("admin/usergroups/sa/edit/ugid/$this->ugid");
             $button .= ' <a class="btn btn-default list-btn" data-toggle="tooltip" data-placement="left" title="'.gT('Edit user group').'" href="'.$url.'" role="button"><span class="glyphicon glyphicon-pencil" ></span></a>';
@@ -238,7 +238,7 @@ class UserGroup extends LSActiveRecord {
         $button .= ' <a class="btn btn-default list-btn" data-toggle="tooltip" data-placement="left" title="'.gT('Email user group').'" href="'.$url.'" role="button"><span class="icon-invite" ></span></a>';
 
         // Delete user group
-        if(Permission::model()->hasGlobalPermission('users','delete'))
+        if(Permission::model()->hasGlobalPermission('usergroups','delete'))
         {
             $url = Yii::app()->createUrl("admin/usergroups/sa/delete/ugid/$this->ugid");
             $button .= ' <a class="btn btn-default list-btn" data-toggle="tooltip" data-placement="left" title="'.gT('Delete user group').'" href="'.$url.'" role="button" data-confirm="'.gT('Are you sure you want to delete this user group?').'"><span class="glyphicon glyphicon-trash text-warning"></span></a>';
@@ -246,8 +246,17 @@ class UserGroup extends LSActiveRecord {
 
         return $button;
     }
-
-    function search()
+    /**
+     * This function search usergroups for a user
+     * If $isMine = true then usergroups are those that have been created by the current user
+     * else this function provides usergroups which contain the current user
+     * 
+     * The object \CActiveDataProvider returned is used to generate the view in application/views/admin/usergroup/usergroups_view.php
+     * 
+     * @param bool $isMine
+     * @return \CActiveDataProvider
+     */
+    function searchMine($isMine)
     {
         $pageSize=Yii::app()->user->getState('pageSize',Yii::app()->params['defaultPageSize']);
 
@@ -288,6 +297,20 @@ class UserGroup extends LSActiveRecord {
 
         $criteria->join .='LEFT JOIN {{users}} AS users ON ( users.uid = t.owner_id )';
 
+        if (!Permission::model()->hasGlobalPermission('superadmin','read'))
+        {
+            if ($isMine)
+            {
+                $criteria->addCondition("t.owner_id=".App()->user->getId(), "AND");
+            }
+            else
+            {
+                $criteria->addCondition("t.owner_id<>".App()->user->getId(), "AND");
+                $criteria->addCondition("t.ugid IN (SELECT ugid FROM $user_in_groups_table WHERE ".$user_in_groups_table.".uid = ".App()->user->getId().")", "AND");
+            }
+            
+        }
+        
         $dataProvider=new CActiveDataProvider('UserGroup', array(
             'sort'=>$sort,
             'criteria'=>$criteria,
@@ -298,48 +321,5 @@ class UserGroup extends LSActiveRecord {
 
         return $dataProvider;
     }
-
-    /*
-    function multi_select($fields, $from, $condition=FALSE)
-    {
-        foreach ($fields as $field)
-        {
-            $this->db->select($field);
-        }
-
-        foreach ($from AS $f)
-        {
-            $this->db->from($f);
-        }
-
-        if ($condition != FALSE)
-        {
-            $this->db->where($condition);
-        }
-
-        if ($order != FALSE)
-        {
-            $this->db->order_by($order);
-        }
-
-        if (isset($join['where'], $join['type'], $join['on']))
-        {
-            $this->db->join($condition);
-        }
-
-        $data = $this->db->get();
-        return $data;
-    }
-
-    function update($what, $where=FALSE)
-    {
-        if ($where != FALSE) $this->db->where($where);
-        return (bool) $this->db->update('user_groups', $what);
-    }
-
-    function delete($condition)
-    {
-        return (bool) $this->db->delete('user_groups', $condition);
-    }*/
-
+      
 }

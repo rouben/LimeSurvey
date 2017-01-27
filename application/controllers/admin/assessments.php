@@ -35,32 +35,35 @@ class Assessments extends Survey_Common_Action
         $iSurveyID = sanitize_int($iSurveyID);
         $sAction = Yii::app()->request->getParam('action');
 
-        $languages = Survey::model()->findByPk($iSurveyID)->additionalLanguages;
-        $surveyLanguage = Survey::model()->findByPk($iSurveyID)->language;
+        if (Permission::model()->hasSurveyPermission($iSurveyID, 'assessments', 'read'))
+        {
+            $languages = Survey::model()->findByPk($iSurveyID)->additionalLanguages;
+            $surveyLanguage = Survey::model()->findByPk($iSurveyID)->language;
 
-        Yii::app()->session['FileManagerContext'] = "edit:assessments:{$iSurveyID}";
+            Yii::app()->session['FileManagerContext'] = "edit:assessments:{$iSurveyID}";
 
-        array_unshift($languages, $surveyLanguage); // makes an array with ALL the languages supported by the survey -> $assessmentlangs
+            array_unshift($languages, $surveyLanguage); // makes an array with ALL the languages supported by the survey -> $assessmentlangs
 
-        Yii::app()->setConfig("baselang", $surveyLanguage);
-        Yii::app()->setConfig("assessmentlangs", $languages);
+            Yii::app()->setConfig("baselang", $surveyLanguage);
+            Yii::app()->setConfig("assessmentlangs", $languages);
 
-        if ($sAction == "assessmentadd")
-            $this->_add($iSurveyID);
-        if ($sAction == "assessmentupdate")
-            $this->_update($iSurveyID);
-        if ($sAction == "assessmentdelete")
-             $this->_delete($iSurveyID, $_POST['id']);
+            if ($sAction == "assessmentadd")
+                $this->_add($iSurveyID);
 
-        if (Permission::model()->hasSurveyPermission($iSurveyID, 'assessments', 'read')) {
-            if ($iSurveyID == '') {
-                show_error(gT("No SID Provided"));
-                die();
-            }
+            if ($sAction == "assessmentupdate")
+                $this->_update($iSurveyID);
+
+            if ($sAction == "assessmentdelete")
+                $this->_delete($iSurveyID, $_POST['id']);
+
 
             $this->_showAssessments($iSurveyID, $sAction, $surveyLanguage);
         }
-
+        else
+        {
+            Yii::app()->setFlashMessage(gT("You do not have permission to access this page."),'error');
+            $this->getController()->redirect(array("admin/"));
+        }
     }
 
     /**
@@ -77,9 +80,10 @@ class Assessments extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
         $aData['surveybar']['closebutton']['url'] = 'admin/survey/sa/view/surveyid/'.$iSurveyID; // Close button
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
-        $aData['surveybar']['savebutton']['form'] = TRUE;
+        $aData['surveybar']['savebutton']['form'] = true;
+        $aData['surveybar']['saveandclosebutton']['form'] = true;
         $aData['gid']=null;
-        App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( ADMIN_SCRIPT_PATH . 'assessments.js' ));
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'assessments.js');
         parent::_renderWrappedTemplate($sAction, $aViewUrls, $aData);
     }
 
@@ -96,7 +100,7 @@ class Assessments extends Survey_Common_Action
         if ($action == "assessmentedit" && Permission::model()->hasSurveyPermission($iSurveyID, 'assessments', 'update')) {
             $aData = $this->_collectEditData($aData);
         }
-
+        $oSurvey = Survey::model()->findByPk($iSurveyID);
         $surveyinfo = getSurveyInfo($iSurveyID);
         $aData['surveyinfo'] = $surveyinfo;
         $aData['imageurl'] = Yii::app()->getConfig('adminimageurl');
@@ -110,8 +114,9 @@ class Assessments extends Survey_Common_Action
 
         Yii::app()->loadHelper('admin/htmleditor');
 
-        $urls['output'] = '        <div class="side-body">
-            <h3>'.gT("Assessments").'</h3>';
+        $urls['output'] = '<div class="side-body ' . getSideBodyClass(false) . '">';
+        $urls['output'] .= App()->getController()->renderPartial('/admin/survey/breadcrumb', array('oSurvey'=>$oSurvey, 'active'=>gT("Assessments")), true, false);
+        $urls['output'] .= '<h3>'.gT("Assessments").'</h3>';
 
         if ($surveyinfo['assessments']!='Y')
         {

@@ -41,7 +41,7 @@ class InstallerController extends CController {
     *
     * @access public
     * @param string $action
-    * @return bool
+    * @return boolean|null
     */
     public function run($action = 'index')
     {
@@ -333,8 +333,8 @@ class InstallerController extends CController {
                         {
                             die("<br />Error: You need at least MySQL version 4.1 to run LimeSurvey. Your version:".$sMySQLVersion);
                         }
-                        @$this->connection->createCommand("SET CHARACTER SET 'utf8'")->execute();  //Checked
-                        @$this->connection->createCommand("SET NAMES 'utf8'")->execute();  //Checked
+                        @$this->connection->createCommand("SET CHARACTER SET 'utf8mb4'")->execute();  //Checked
+                        @$this->connection->createCommand("SET NAMES 'utf8mb4'")->execute();  //Checked
                     }
 
                     // Setting dateformat for mssql driver. It seems if you don't do that the in- and output format could be different
@@ -646,6 +646,8 @@ class InstallerController extends CController {
                 $aData['classesForStep'] = array('off','off','off','on','off','off');
                 $aData['progressValue'] = 40;
 
+                // Flush query cache because Yii does not handle properly the new DB prefix
+                Yii::app()->cache->flush();
                 //config file is written, and we've a db in place
                 $this->connection = Yii::app()->db;
 
@@ -707,9 +709,7 @@ class InstallerController extends CController {
                     return;
                 }
             } else {
-                // if passwords don't match, redirect to proper link.
-                Yii::app()->session['optconfig_message'] = sprintf('<b>%s</b>', gT("Passwords don't match."));
-                $this->redirect(array('installer/optional'));
+                unset($aData['confirmation']);
             }
         } elseif(empty(Yii::app()->session['configFileWritten'])) {
             $this->_writeConfigFile();
@@ -734,7 +734,6 @@ class InstallerController extends CController {
     * Loads a library
     *
     * @access public
-    * @param string $helper
     * @return void
     */
     public function loadLibrary($library)
@@ -745,7 +744,6 @@ class InstallerController extends CController {
     /**
     * check requirements
     *
-    * @param array $data return theme variables
     * @return bool requirements met
     */
     private function _check_requirements(&$aData)
@@ -772,6 +770,9 @@ class InstallerController extends CController {
         }
 
 
+        /**
+         * @param string $sDirectory
+         */
         function is_writable_recursive($sDirectory)
         {
             $sFolder = opendir($sDirectory);
@@ -790,8 +791,8 @@ class InstallerController extends CController {
         /**
         * check for a specific PHPFunction, return HTML image
         *
-        * @param string $function
-        * @param string $image return
+        * @param string $sFunctionName
+        * @param string $sImage return
         * @return bool result
         */
         function check_PHPFunction($sFunctionName, &$sImage)
@@ -806,9 +807,9 @@ class InstallerController extends CController {
         *
         * @param string $path file or directory to check
         * @param int $type 0:undefined (invalid), 1:file, 2:directory
-        * @param string $data to manipulate
         * @param string $base key for data manipulation
         * @param string $keyError key for error data
+        * @param string $aData
         * @return bool result of check (that it is writeable which implies existance)
         */
         function check_PathWriteable($path, $type, &$aData, $base, $keyError, $bRecursive=false)
@@ -876,7 +877,7 @@ class InstallerController extends CController {
         if (version_compare(PHP_VERSION, '5.3.0', '<'))
             $bProceed = !$aData['verror'] = true;
 
-        if (convertPHPSizeToBytes(ini_get('memory_limit'))/1024/1024<64 && ini_get('memory_limit')!=-1)
+        if (convertPHPSizeToBytes(ini_get('memory_limit'))/1024/1024<128 && ini_get('memory_limit')!=-1)
             $bProceed = !$aData['bMemoryError'] = true;
 
 
@@ -933,13 +934,16 @@ class InstallerController extends CController {
         // imap php library check
         check_PHPFunction('imap_open', $aData['bIMAPPresent']);
 
+        // Silently check some default PHP extensions
+        $this->checkDefaultExtensions();
+
         return $bProceed;
     }
 
     /**
     * Installer::_setup_tables()
     * Function that actually modify the database. Read $sqlfile and execute it.
-    * @param string $sqlfile
+    * @param string $sFileName
     * @return  Empty string if everything was okay - otherwise the error messages
     */
     function _setup_tables($sFileName, $aDbConfig = array(), $sDatabasePrefix = '')
@@ -1034,7 +1038,12 @@ class InstallerController extends CController {
             {
                 $sURLFormat='get'; // Fall back to get if an Apache server cannot be determined reliably
             }
+            $sCharset='utf8';
+            if (in_array($sDatabaseType,array('mysql', 'mysqli'))) {
+                $sCharset='utf8mb4';
+            }
 
+            if ($sDatabaseType)
             $sConfig = "<?php if (!defined('BASEPATH')) exit('No direct script access allowed');" . "\n"
             ."/*"."\n"
             ."| -------------------------------------------------------------------"."\n"
@@ -1084,8 +1093,8 @@ class InstallerController extends CController {
             }
             $sConfig .="\t\t\t" . "'username' => '".addcslashes ($sDatabaseUser,"'")."',"  . "\n"
             ."\t\t\t" . "'password' => '".addcslashes ($sDatabasePwd,"'")."',"            . "\n"
-            ."\t\t\t" . "'charset' => 'utf8',"                      . "\n"
-            ."\t\t\t" . "'tablePrefix' => '$sDatabasePrefix',"      . "\n";
+            ."\t\t\t" . "'charset' => '{$sCharset}',"                      . "\n"
+            ."\t\t\t" . "'tablePrefix' => '{$sDatabasePrefix}',"      . "\n";
 
             if (in_array($sDatabaseType, array('mssql', 'sqlsrv', 'dblib'))) {
                 $sConfig .="\t\t\t" ."'initSQLs'=>array('SET DATEFORMAT ymd;','SET QUOTED_IDENTIFIER ON;'),"    . "\n";
@@ -1115,11 +1124,14 @@ class InstallerController extends CController {
             ."\t\t\t" . "'rules' => array("                         . "\n"
             ."\t\t\t\t" . "// You can add your own rules here"      . "\n"
             ."\t\t\t" . "),"                                        . "\n"
-            ."\t\t\t" . "'showScriptName' => $sShowScriptName,"     . "\n"
+            ."\t\t\t" . "'showScriptName' => {$sShowScriptName},"   . "\n"
             ."\t\t"   . "),"                                        . "\n"
             ."\t"     . ""                                          . "\n"
 
             ."\t"     . "),"                                        . "\n"
+            ."\t"     . "// For security issue : it's better to set runtimePath out of web access". "\n"
+            ."\t"     . "// Directory must be readable and writable by the webuser". "\n"
+            ."\t"     . "// 'runtimePath'=>'/var/limesurvey/runtime/'". "\n"
             ."\t"     . "// Use the following config variable to set modified optional settings copied from config-defaults.php". "\n"
             ."\t"     . "'config'=>array("                          . "\n"
             ."\t"     . "// debug: Set this to 1 if you are looking for errors. If you still get no errors after enabling this". "\n"
@@ -1170,6 +1182,7 @@ class InstallerController extends CController {
     *
     * @param string $sDatabaseType
     * @param string $sDatabasePort
+    * @return string
     */
     function _getDsn($sDatabaseType, $sDatabaseLocation, $sDatabasePort, $sDatabaseName, $sDatabaseUser, $sDatabasePwd)
     {
@@ -1359,5 +1372,29 @@ class InstallerController extends CController {
         $testPdo = null;
 
         return true;
+    }
+
+    /**
+     * Contains a number of extensions that can be expected
+     * to be installed by default, but maybe not on BSD systems etc.
+     * Check them silently and die if they are missing.
+     * @return void
+     */
+    private function checkDefaultExtensions()
+    {
+        $extensions = array(
+            'simplexml',
+            'filter',
+            'ctype',
+            'session',
+            'hash'
+        );
+
+        foreach ($extensions as $extension) {
+            if (!extension_loaded($extension)) {
+                die('You\'re missing default PHP extension ' . $extension);
+            }
+        }
+
     }
 }

@@ -13,11 +13,11 @@
 */
 
 /**
-* Sends email to tokens - invitation and reminders
+* Sends email to tokens - invitations, reminders, registers, and confirmations
 *
-* @param mixed $iSurveyID
+* @param integer $iSurveyID
 * @param array  $aResultTokens
-* @param string $sType type of notification invite|register|remind
+* @param string $sType type of notification invite|register|remind|confirm
 * @return array of results
 */
 function emailTokens($iSurveyID,$aResultTokens,$sType)
@@ -113,28 +113,35 @@ function emailTokens($iSurveyID,$aResultTokens,$sType)
 		global $maildebug;
 
 		//choose appriopriate email message
-		if($sType == 'invite')
-		{
-			$sSubject = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_invite_subj'];
-			$sMessage = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_invite'];
+		switch ($sType) {
+			case 'invite':
+				$sSubject = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_invite_subj'];
+				$sMessage = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_invite'];
+				break;
+			case 'remind':
+				$sSubject = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_remind_subj'];
+				$sMessage = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_remind'];
+				break;
+			case 'register':
+				$sSubject = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_register_subj'];
+				$sMessage = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_register'];
+				break;
+			case 'confirm':
+				$sSubject = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_confirm_subj'];
+				$sMessage = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_confirm'];
+				break;
+			default:
+				throw new Exception('Invalid template name');
 		}
-		else
-		{
-			$sSubject = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_remind_subj'];
-			$sMessage = $aSurveyLocaleData[$sTokenLanguage]['surveyls_email_remind'];
-		}
-
-		$modsubject = Replacefields($sSubject, $fieldsarray);
-		$modmessage = Replacefields($sMessage, $fieldsarray);
 
 		if (isset($barebone_link))
 		{
-			$modsubject = str_replace("@@SURVEYURL@@", $barebone_link, $modsubject);
-			$modmessage = str_replace("@@SURVEYURL@@", $barebone_link, $modmessage);
+			$modsubject = str_replace("@@SURVEYURL@@", $barebone_link, $sSubject);
+			$modmessage = str_replace("@@SURVEYURL@@", $barebone_link, $sMessage);
 		}
 
-
-
+		$modsubject = Replacefields($modsubject, $fieldsarray);
+		$modmessage = Replacefields($modmessage, $fieldsarray);
 
 		if (isset($aTokenRow['validfrom']) && trim($aTokenRow['validfrom']) != '' && convertDateTimeFormat($aTokenRow['validfrom'], 'Y-m-d H:i:s', 'U') * 1 > date('U') * 1)
 		{

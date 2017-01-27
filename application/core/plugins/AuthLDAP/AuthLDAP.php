@@ -66,7 +66,7 @@ class AuthLDAP extends ls\pluginmanager\AuthPluginBase
                 ),
         'usersearchbase' => array(
                 'type' => 'string',
-                'label' => 'Base DN for the user search operation'
+                'label' => 'Base DN for the user search operation. Multiple bases may be separated by a semicolon (;)'
                 ),
         'extrauserfilter' => array(
                 'type' => 'string',
@@ -214,15 +214,21 @@ class AuthLDAP extends ls\pluginmanager\AuthPluginBase
             $usersearchfilter = "($searchuserattribute=$new_user)";
         }
         // Search for the user
-        $dnsearchres = ldap_search($ldapconn, $usersearchbase, $usersearchfilter, array($mailattribute,$fullnameattribute));
-        $rescount=ldap_count_entries($ldapconn,$dnsearchres);
-        if ($rescount == 1)
-        {
-            $userentry=ldap_get_entries($ldapconn, $dnsearchres);
-            $new_email = flattenText($userentry[0][$mailattribute][0]);
-            $new_full_name = flattenText($userentry[0][strtolower($fullnameattribute)][0]);
-        }
-        else
+	$userentry = false;
+	// try each semicolon-separated search base in order
+	foreach(explode(";",$usersearchbase) as $usb)
+	{
+          $dnsearchres = ldap_search($ldapconn, $usersearchbase, $usersearchfilter, array($mailattribute,$fullnameattribute));
+          $rescount=ldap_count_entries($ldapconn,$dnsearchres);
+          if ($rescount == 1)
+          {
+              $userentry=ldap_get_entries($ldapconn, $dnsearchres);
+              $new_email = flattenText($userentry[0][$mailattribute][0]);
+              $new_full_name = flattenText($userentry[0][strtolower($fullnameattribute)][0]);
+	      break;
+          }
+	}
+	if(!$userentry)
         {
             $oEvent->set('errorCode',self::ERROR_LDAP_NO_SEARCH_RESULT);
             $oEvent->set('errorMessageTitle',gT('Username not found in LDAP server'));
@@ -325,17 +331,17 @@ class AuthLDAP extends ls\pluginmanager\AuthPluginBase
     public function newLoginForm()
     {
         $this->getEvent()->getContent($this)
-            ->addContent(CHtml::tag('li', array(), "<label for='user'>"  . gT("Username") . "</label><input name='user' id='user' type='text' size='40' maxlength='40' value='' />"))
-            ->addContent(CHtml::tag('li', array(), "<label for='password'>"  . gT("Password") . "</label><input name='password' id='password' type='password' size='40' maxlength='40' value='' />"));
+        ->addContent(CHtml::tag('span', array(), "<label for='user'>"  . gT("Username") . "</label>".CHtml::textField('user','',array('size'=>40,'maxlength'=>40, 'class'=>"form-control"))))
+        ->addContent(CHtml::tag('span', array(), "<label for='password'>"  . gT("Password") . "</label>".CHtml::passwordField('password','',array('size'=>40,'maxlength'=>40, 'class'=>"form-control"))));
     }
 
     /**
-     * Modified getPluginSettings since we have a select box that autosubmits
-     * and we only want to show the relevant options.
-     *
-     * @param boolean $getValues
-     * @return array
-     */
+    * Modified getPluginSettings since we have a select box that autosubmits
+    * and we only want to show the relevant options.
+    *
+    * @param boolean $getValues
+    * @return array
+    */
     public function getPluginSettings($getValues = true)
     {
         $aPluginSettings = parent::getPluginSettings($getValues);
@@ -489,7 +495,7 @@ class AuthLDAP extends ls\pluginmanager\AuthPluginBase
             {
                 // if no entry or more than one entry returned
                 // then deny authentication
-                $this->setAuthFailure(100, ldap_error($ldapconn));
+                $this->setAuthFailure(self::ERROR_USERNAME_INVALID);
                 ldap_close($ldapconn); // all done? close connection
                 return;
             }
@@ -505,45 +511,24 @@ class AuthLDAP extends ls\pluginmanager\AuthPluginBase
             return;
         }
 
-        // Authentication was successful, now see if we have a user or that we should create one
-        if (is_null($user)) {
-            if ($this->autoCreate === true)  {
-                /*
-                 * Dispatch the newUserLogin event, and hope that after this we can find the user
-                 * this allows users to create their own plugin for handling the user creation
-                 * we will need more methods to pass username, rdn and ldap connection.
-                 */
-                $this->pluginManager->dispatchEvent(new PluginEvent('newUserLogin', $this));
-
-                // Check ourselves, we do not want fake responses from a plugin
-                $user = $this->api->getUserByName($username);
-            }
-
-            if (is_null($user)) {
-                $this->setAuthFailure(self::ERROR_USERNAME_INVALID);
-                ldap_close($ldapconn); // all done? close connection
-                return;
-            }
-        }
-
         ldap_close($ldapconn); // all done? close connection
 
-        // Finally, if user didn't exist and auto creation is enabled, we create it
+        // Finally, if user didn't exist and auto creation (i.e. autoCreateFlag == true) is enabled, we create it
         if ($autoCreateFlag)
         {
             if (($iNewUID = $this->_createNewUser($username)) && $this->get('automaticsurveycreation', null, null, false))
             {
                 Permission::model()->setGlobalPermission($iNewUID, 'surveys', array('create_p'));
             }
+            $user = $this->api->getUserByName($username);
+            if ($user === null)
+            {
+                $this->setAuthFailure(self::ERROR_USERNAME_INVALID, gT('Credentials are valid but we failed to create a user'));
+                return;
+            }
         }
-        $user = $this->api->getUserByName($username);
-        if ($user === null)
-        {
-            $this->setAuthFailure(self::ERROR_USERNAME_INVALID, gT('Credentials are valid but we failed to create a user'));
-            return;
-        }
-
         // If we made it here, authentication was a success and we do have a valid user
+        $this->pluginManager->dispatchEvent(new PluginEvent('newUserLogin', $this));
         $this->setAuthSuccess($user);
     }
 }

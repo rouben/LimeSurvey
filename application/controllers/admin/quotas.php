@@ -58,6 +58,9 @@ class quotas extends Survey_Common_Action
         return $aData;
     }
 
+    /**
+     * @param string $sPermission
+     */
     private function _checkPermissions($iSurveyId, $sPermission)
     {
         if (!empty($sPermission) && !(Permission::model()->hasSurveyPermission($iSurveyId, 'quotas', $sPermission))) {
@@ -141,6 +144,24 @@ class quotas extends Survey_Common_Action
                 $aData['completed'] = $completed;
                 $aData['totalquotas'] = $totalquotas;
                 $aData['totalcompleted'] = $totalcompleted;
+
+                // Edit URL
+                $aData['editUrl'] = App()->createUrl("admin/quotas/sa/editquota/surveyid/" . $iSurveyId, array(
+                    'sid' => $iSurveyId,
+                    'action' => 'quotas',
+                    'quota_id' => $aQuotaListing['id'],
+                    'subaction' => 'quota_editquota'
+
+                ));
+
+                // Delete URL
+                $aData['deleteUrl'] = App()->createUrl("admin/quotas/sa/delquota/surveyid/" . $iSurveyId, array(
+                    'sid' => $iSurveyId,
+                    'action' => 'quotas',
+                    'quota_id' => $aQuotaListing['id'],
+                    'subaction' => 'quota_delquota'
+                ));
+
                 $aViewUrls['output'] .= $this->getController()->renderPartial("/admin/quotas/viewquotasrow_view", $aData, true);
                 $aData['output'] .= $this->getController()->renderPartial("/admin/quotas/viewquotasrow_view", $aData, true);
 
@@ -205,6 +226,7 @@ class quotas extends Survey_Common_Action
         $oQuota->qlimit = Yii::app()->request->getPost('quota_limit');
         $oQuota->action = Yii::app()->request->getPost('quota_action');
         $oQuota->autoload_url = Yii::app()->request->getPost('autoload_url');
+        $oQuota->active = Yii::app()->request->getPost('active');
         $oQuota->save();
         $iQuotaId = $oQuota->id;
 
@@ -242,6 +264,7 @@ class quotas extends Survey_Common_Action
                 $oQuotaLanguageSettings->quotals_urldescrip = $_POST['quotals_urldescrip_' . $sLang];
                 $oQuotaLanguageSettings->save();
             }
+            Yii::app()->user->setFlash('success', gT("New quota saved"));
         }
 
         self::_redirectToIndex($iSurveyId);
@@ -259,6 +282,7 @@ class quotas extends Survey_Common_Action
         $oQuota->qlimit = Yii::app()->request->getPost('quota_limit');
         $oQuota->action = Yii::app()->request->getPost('quota_action');
         $oQuota->autoload_url = Yii::app()->request->getPost('autoload_url');
+        $oQuota->active = Yii::app()->request->getPost('active');
         $oQuota->save();
 
         //Iterate through each language posted, and make sure there is a quota message for it
@@ -348,9 +372,13 @@ class quotas extends Survey_Common_Action
         $iSurveyId = sanitize_int($iSurveyId);
         $this->_checkPermissions($iSurveyId, 'delete');
 
-        Quota::model()->deleteByPk(Yii::app()->request->getPost('quota_id'));
-        QuotaLanguageSetting::model()->deleteAllByAttributes(array('quotals_quota_id' => Yii::app()->request->getPost('quota_id')));
-        QuotaMember::model()->deleteAllByAttributes(array('quota_id' => Yii::app()->request->getPost('quota_id')));
+        $quotaId = Yii::app()->request->getQuery('quota_id');
+
+        Quota::model()->deleteByPk($quotaId);
+        QuotaLanguageSetting::model()->deleteAllByAttributes(array('quotals_quota_id' => $quotaId));
+        QuotaMember::model()->deleteAllByAttributes(array('quota_id' => $quotaId));
+
+        Yii::app()->user->setFlash('success', sprintf(gT("Quota with ID %s was deleted"), $quotaId));
 
         self::_redirectToIndex($iSurveyId);
     }
@@ -362,8 +390,9 @@ class quotas extends Survey_Common_Action
         $aData = $this->_getData($iSurveyId);
         $aLangs = $aData['aLangs'];
         $aViewUrls = array();
+        $quotaId = Yii::app()->request->getQuery('quota_id');
 
-        $aQuotaInfo = Quota::model()->findByPk(Yii::app()->request->getPost('quota_id'));
+        $aQuotaInfo = Quota::model()->findByPk($quotaId);
         $aData['quotainfo'] = $aQuotaInfo;
 
         $first=true;
@@ -375,7 +404,7 @@ class quotas extends Survey_Common_Action
                 $aTabTitles[$sLanguage].= ' (' . gT("Base language") . ')';
                 $first = false;
             }
-            $aData['langquotainfo'] = QuotaLanguageSetting::model()->findByAttributes(array('quotals_quota_id' => Yii::app()->request->getPost('quota_id'), 'quotals_language' => $sLanguage));
+            $aData['langquotainfo'] = QuotaLanguageSetting::model()->findByAttributes(array('quotals_quota_id' => $quotaId, 'quotals_language' => $sLanguage));
             $aData['lang'] = $sLanguage;
             $aTabContents[$sLanguage] = $this->getController()->renderPartial('/admin/quotas/editquotalang_view', $aData, true);
         }
@@ -392,9 +421,15 @@ class quotas extends Survey_Common_Action
         $aData['surveybar']['closebutton']['url'] = 'admin/quotas/sa/index/surveyid/'.$iSurveyId;  // Close button
         $aData['surveybar']['savebutton']['form'] = 'frmeditgroup';
 
+        $aData['langs'] = $aData['aLangs'];
+        $aData['baselang'] = $aData['sBaseLang'];
+
         $this->_renderWrappedTemplate('quotas', $aViewUrls, $aData);
     }
 
+    /**
+     * Add new answer to quota
+     */
     function new_answer($iSurveyId, $sSubAction = 'new_answer')
     {
         $iSurveyId = sanitize_int($iSurveyId);
@@ -406,8 +441,8 @@ class quotas extends Survey_Common_Action
         if (($sSubAction == "new_answer" || ($sSubAction == "new_answer_two" && !isset($_POST['quota_qid']))) && Permission::model()->hasSurveyPermission($iSurveyId, 'quotas', 'create'))
         {
             $result = Quota::model()->findAllByPk(Yii::app()->request->getPost('quota_id'));
-            foreach ($result as $aQuotaDetails)
-            {
+
+            foreach ($result as $aQuotaDetails){
                 $quota_name = $aQuotaDetails['name'];
             }
 
@@ -426,8 +461,11 @@ class quotas extends Survey_Common_Action
 
         if ($sSubAction == "new_answer_two" && isset($_POST['quota_qid']) && Permission::model()->hasSurveyPermission($iSurveyId, 'quotas', 'create'))
         {
-            $aResults = Quota::model()->findByPk(Yii::app()->request->getPost('quota_qid'));
-            $sQuotaName = $aResults['name'];
+            $result = Quota::model()->findAllByPk(Yii::app()->request->getPost('quota_id'));
+
+            foreach ($result as $aQuotaDetails){
+                $sQuotaName = $aQuotaDetails['name'];
+            }
 
             $aQuestionAnswers = self::getQuotaAnswers(Yii::app()->request->getPost('quota_qid'), $iSurveyId, Yii::app()->request->getPost('quota_id'));
             $x = 0;
@@ -448,8 +486,8 @@ class quotas extends Survey_Common_Action
         $aData['sidemenu']['state'] = false;
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
-        $aData['surveybar']['savebutton']['form'] = 'frmeditgroup';
         $aData['surveybar']['closebutton']['url'] = 'admin/quotas/sa/index/surveyid/'.$iSurveyId;  // Close button
+        $aData['surveybar']['closebutton']['forbidden'][] = 'new_answer';
 
         $this->_renderWrappedTemplate('quotas', $aViewUrls, $aData);
     }
@@ -593,7 +631,7 @@ class quotas extends Survey_Common_Action
      */
     protected function _renderWrappedTemplate($sAction = 'quotas', $aViewUrls = array(), $aData = array())
     {
-        App()->getClientScript()->registerScriptFile( App()->getAssetManager()->publish( ADMIN_SCRIPT_PATH . '/quotas.js' ));
+        $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'quotas.js');
         parent::_renderWrappedTemplate($sAction, $aViewUrls, $aData);
     }
 

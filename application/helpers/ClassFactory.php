@@ -27,6 +27,10 @@
 			//return eval($code);
 		}
 
+		/**
+		 * @param string $prefix
+		 * @param string $baseClass
+		 */
 		public static function registerClass($prefix, $baseClass)
 		{
 			self::$map[$prefix] = $baseClass;

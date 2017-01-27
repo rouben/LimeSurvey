@@ -1,5 +1,5 @@
 <div class='row'>
-    <div class="col-sm-12" id="filterchoices">
+    <div class="col-sm-12" id="filterchoices" <?php if ($filterchoice_state!='' || !empty($summary)) { echo " style='display:none' "; } ?>>
 
         <?php foreach ($aGroups as $groupKey => $aGroup):?>
 
@@ -11,7 +11,7 @@
 
                         <span class="groupTitle">
 
-                                <?php echo $aGroup['name']; ?>
+                                <?php echo flattenText($aGroup['name']); ?>
 
                             (<?php echo gT("Question group").$aGroup['gid']; ?>)
                         </span>

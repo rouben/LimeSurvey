@@ -13,6 +13,7 @@
  *
  */
 ?>
+<!-- _statisticsoutput_graphs -->
     <?php if(count($labels) < 70): ?>
         <!-- Charts -->
         <div class="row">
@@ -62,7 +63,11 @@
         </div>
     <?php endif;?>
 
+<?php //Simpler js-aggregation of values through global object. Approx 30% faster than parsing through eval ?>
 <script>
-    var labels_<?php echo $qqid; ?>=<?php echo json_encode($labels); // the array of labels ?>;
-    var grawdata_<?php echo $qqid;?>=<?php echo json_encode($grawdata); // the datas to generate the graph ?>;
+    statisticsData['quid'+'<?php echo $qqid; ?>'] = {
+        labels : <?php echo json_encode($labels); ?>,
+        grawdata : <?php echo json_encode($grawdata); ?>, // the datas to generate the graph  
+    };
 </script>
+<!-- endof  _statisticsoutput_graphs -->

@@ -19,10 +19,12 @@ if ($('#save-and-close-form-button').length>0){
         $form = $(formid);
 
         // Add input to tell us to not redirect
+        // TODO : change that
         $('<input type="hidden">').attr({
             name: 'saveandclose',
             value: '1'
         }).appendTo($form);
+
 
         $form.find('[type="submit"]').trigger('click');
         return false;
@@ -74,6 +76,7 @@ if ($('#save-and-close-button').length > 0){
         var $form = getForm(this);
         closeAfterSaveInput.val("true");
         $form.append(closeAfterSaveInput);
+        formSubmitting = true;
         $form.find('[type="submit"]').first().trigger('click');
     });
 }

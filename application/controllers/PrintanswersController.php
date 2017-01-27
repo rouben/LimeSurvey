@@ -66,6 +66,11 @@
             SetSurveyLanguage($iSurveyID, $sLanguage);
             $aSurveyInfo = getSurveyInfo($iSurveyID,$sLanguage);
             $oTemplate = Template::model()->getInstance(null, $iSurveyID);
+            if($oTemplate->cssFramework == 'bootstrap')
+            {
+                App()->bootstrap->register();
+            }
+
 
             //Survey is not finished or don't exist
             if (!isset($_SESSION['survey_'.$iSurveyID]['finished']) || !isset($_SESSION['survey_'.$iSurveyID]['srid']))
@@ -82,7 +87,7 @@
                 ."\t".sprintf(gT("Please contact %s ( %s ) for further assistance."), Yii::app()->getConfig("siteadminname"), Yii::app()->getConfig("siteadminemail"))."\n"
                 ."</center><br />\n";
                 echo templatereplace(file_get_contents($oTemplate->viewPath.'/endpage.pstpl'),array());
-                doFooter();
+                doFooter($iSurveyID);
                 exit;
             }
             //Fin session time out
@@ -134,7 +139,7 @@
                     {
                         if($sAnonymized != 'Y')
                         {
-                                $sOutput .= "\t<tr class='printanswersquestion'><td>{$fname[0]} {$fname[1]} {$sFieldname}</td><td class='printanswersanswertext'>{$fname[2]}</td></tr>";
+                                $sOutput .= "\t<tr class='printanswersquestion'><td>{$fname[0]} {$fname[1]}</td><td class='printanswersanswertext'>{$fname[2]}</td></tr>";
                         }
                     }
                     elseif (substr($sFieldname,0,4) != 'qid_') // Question text is already in subquestion text, skipping it

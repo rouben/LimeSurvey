@@ -62,7 +62,7 @@ For licensing, see LICENSE.html or http://ckeditor.com/license
                         evt.data.dialog = 'editlimereplacementfields';
                 });
 
-            editor.addCss(
+           CKEDITOR.addCss(
                 '.cke_limereplacementfields' +
                 '{' +
                     'background-color: #ffff00;' +
@@ -121,10 +121,8 @@ For licensing, see LICENSE.html or http://ckeditor.com/license
 })();
 
 CKEDITOR.plugins.setLang('limereplacementfields','en', {
-    limereplacementfields: {
         title:sReplacementFieldTitle,
         button:sReplacementFieldButton
-    }
     }
 );
 
@@ -132,37 +130,13 @@ CKEDITOR.plugins.limereplacementfields =
 {
     createlimereplacementfields : function( editor, oldElement, text, isGet )
     {
-        var element = new CKEDITOR.dom.element( 'span', editor.document );
-        element.setAttributes(
-            {
-                contentEditable        : 'false',
-                'data-cke-limereplacementfields'    : 1,
-                'class'            : 'cke_limereplacementfields'
-            }
-        );
-
-        text && element.setText( text );
 
         if ( isGet )
-            return element.getOuterHtml();
-
-        if ( oldElement )
         {
-            if ( CKEDITOR.env.ie )
-            {
-                element.insertAfter( oldElement );
-                // Some time is required for IE before the element is removed.
-                setTimeout( function()
-                    {
-                        oldElement.remove();
-                        element.focus();
-                    }, 10 );
-            }
-            else
-                element.replace( oldElement );
+            return text;
         }
-        else
-            editor.insertElement( element );
+
+        editor.insertText(text);
 
         return null;
     },

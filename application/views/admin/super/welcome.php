@@ -97,17 +97,29 @@
     <?php endif;?>
 
     <!-- Rendering all boxes in database -->
-    <?php $this->widget('ext.PannelBoxWidget.PannelBoxWidget', array(
+    <?php $this->widget('ext.PanelBoxWidget.PanelBoxWidget', array(
             'display'=>'allboxesinrows',
             'boxesbyrow'=>$iBoxesByRow,
             'offset'=>$sBoxesOffSet,
         ));
     ?>
 
+    <?php if( $bShowSurveyList ): ?>
+        <div class="col-sm-12 list-surveys">
+            <h3><?php eT('Survey list'); ?></h3>
+            <?php
+                $this->widget('ext.admin.survey.ListSurveysWidget.ListSurveysWidget', array(                        
+                            'model'            => $oSurveySearch,
+                            'bRenderSearchBox' => $bShowSurveyListSearch,
+                        ));
+            ?>
+        </div>
+    <?php endif; ?>
+
 
     <!-- Boxes for smartphones -->
     <div class="row  hidden-sm  hidden-md hidden-lg ">
-        <div class="panel panel-primary panel-clickable" id="pannel-7" data-url="/limesurvey/LimeSurveyNext/index.php/admin/survey/sa/listsurveys" style="opacity: 1; top: 0px;">
+        <div class="panel panel-primary panel-clickable" id="panel-7" data-url="/limesurvey/LimeSurveyNext/index.php/admin/survey/sa/listsurveys" style="opacity: 1; top: 0px;">
             <div class="panel-heading">
                 <h3 class="panel-title"><?php eT('List surveys');?></h3>
             </div>
@@ -119,7 +131,7 @@
             </div>
         </div>
 
-        <div class="panel panel-primary panel-clickable" id="pannel-8" data-url="/limesurvey/LimeSurveyNext/index.php/admin/globalsettings" style="opacity: 1; top: 0px;">
+        <div class="panel panel-primary panel-clickable" id="panel-8" data-url="/limesurvey/LimeSurveyNext/index.php/admin/globalsettings" style="opacity: 1; top: 0px;">
             <div class="panel-heading">
                 <h3 class="panel-title"><?php eT('Edit global settings');?></h3>
             </div>

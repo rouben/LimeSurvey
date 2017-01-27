@@ -10,7 +10,7 @@
 * other free or open source software licenses.
 * See COPYRIGHT.php for copyright notices and details.
 *
-*	Files Purpose: lots of common functions
+*    Files Purpose: lots of common functions
 */
 class QuestionGroup extends LSActiveRecord
 {
@@ -43,7 +43,7 @@ class QuestionGroup extends LSActiveRecord
     * Returns the primary key of this table
     *
     * @access public
-    * @return string
+    * @return string[]
     */
     public function primaryKey()
     {
@@ -86,7 +86,10 @@ class QuestionGroup extends LSActiveRecord
     */
     public function relations()
     {
-        return array('questions' => array(self::HAS_MANY, 'Question', 'gid, language'));
+        return array(
+            'survey'    => array(self::BELONGS_TO, 'Survey', 'sid'),
+            'questions' => array(self::HAS_MANY, 'Question', 'gid, language', 'condition'=>'parent_qid=0', 'order'=>'question_order ASC')
+        );
     }
 
     function getAllRecords($condition=FALSE, $order=FALSE, $return_query = TRUE)
@@ -128,7 +131,7 @@ class QuestionGroup extends LSActiveRecord
     * Insert an array into the groups table
     * Returns false if insertion fails, otherwise the new GID
     *
-    * @param array $data                           array_merge
+    * @param array $data
     */
     public function insertRecords($data)
     {
@@ -137,6 +140,39 @@ class QuestionGroup extends LSActiveRecord
             $group->$k = $v;
         if  (!$group->save()) return false;
         else return $group->gid;
+    }
+
+
+    /**
+    * This functions insert question group data in the form of array('<grouplanguage>'=>array( <array of fieldnames => values >))
+    * It will take care of maintaining the group ID
+    *
+    * @param mixed $aQuestionGroupData
+    */
+    public function insertNewGroup($aQuestionGroupData)
+    {
+        $aFirstRecord=reset($aQuestionGroupData);
+        $iSurveyID=$aFirstRecord['sid'];
+        $sBaseLangauge = Survey::model()->findByPk($iSurveyID)->language;
+        $aAdditionalLanguages = Survey::model()->findByPk($iSurveyID)->additionalLanguages;
+        $aSurveyLanguages=array($sBaseLangauge)+$aAdditionalLanguages;
+        $bFirst = true;
+        foreach ($aSurveyLanguages as $sLanguage)
+        {
+            if ($bFirst)
+            {
+                $iGroupID=$this->insertRecords($aQuestionGroupData[$sLanguage]);
+                $bFirst = false;
+            }
+            else
+            {
+                $aQuestionGroupData[$sLanguage]['gid']=$iGroupID;
+                switchMSSQLIdentityInsert('groups',true);
+                $this->insertRecords($aQuestionGroupData[$sLanguage]);
+                switchMSSQLIdentityInsert('groups',false);
+            }
+        }
+        return $iGroupID;
     }
 
     function getGroups($surveyid) {
@@ -211,46 +247,50 @@ class QuestionGroup extends LSActiveRecord
         // Find out if the survey is active to disable add-button
         $oSurvey=Survey::model()->findByPk($this->sid);
         $surveyIsActive = $oSurvey->active !== 'N';
-        $baselang = $oSurvey->language;
+        $button = '';
 
         // Add question to this group
-        $url = Yii::app()->createUrl("admin/questions/sa/newquestion/surveyid/$this->sid/gid/$this->gid");
-        $button = '<a class="btn btn-default list-btn ' . ($surveyIsActive ? 'disabled' : '') . ' "  data-toggle="tooltip"  data-placement="left" title="'.gT('Add new question to group').'" href="'.$url.'" role="button"><span class="glyphicon glyphicon-plus-sign " ></span></a>';
+        if (Permission::model()->hasSurveyPermission($this->sid, 'surveycontent', 'update'))
+        {
+            $url = Yii::app()->createUrl("admin/questions/sa/newquestion/surveyid/$this->sid/gid/$this->gid");
+            $button .= '<a class="btn btn-default list-btn ' . ($surveyIsActive ? 'disabled' : '') . ' "  data-toggle="tooltip"  data-placement="left" title="'.gT('Add new question to group').'" href="'.$url.'" role="button"><span class="glyphicon glyphicon-plus-sign " ></span></a>';
+        }
 
         // Group edition
         // Edit
-        $url = Yii::app()->createUrl("admin/questiongroups/sa/edit/surveyid/$this->sid/gid/$this->gid");
-        $button .= '  <a class="btn btn-default  list-btn" href="'.$url.'" role="button" data-toggle="tooltip" title="'.gT('Edit group').'"><span class="glyphicon glyphicon-pencil " ></span></a>';
+        if (Permission::model()->hasSurveyPermission($this->sid, 'surveycontent', 'update'))
+        {
+            $url = Yii::app()->createUrl("admin/questiongroups/sa/edit/surveyid/$this->sid/gid/$this->gid");
+            $button .= '  <a class="btn btn-default  list-btn" href="'.$url.'" role="button" data-toggle="tooltip" title="'.gT('Edit group').'"><span class="glyphicon glyphicon-pencil " ></span></a>';
+        }
 
         // View summary
-        $url = Yii::app()->createUrl("/admin/questiongroups/sa/view/surveyid/");
-        $url .= '/'.$this->sid.'/gid/'.$this->gid;
-        $button .= '  <a class="btn btn-default  list-btn" href="'.$url.'" role="button" data-toggle="tooltip" title="'.gT('Group summary').'"><span class="glyphicon glyphicon-list-alt " ></span></a>';
-
-
-        $sumresult4 = Question::model()->findAllByAttributes(array('sid' => $this->sid, 'gid' => $this->gid, 'language' => $baselang));
-        $sumcount4 = count($sumresult4);
-
+        if (Permission::model()->hasSurveyPermission($this->sid, 'surveycontent', 'read'))
+        {
+            $url = Yii::app()->createUrl("/admin/questiongroups/sa/view/surveyid/");
+            $url .= '/'.$this->sid.'/gid/'.$this->gid;
+            $button .= '  <a class="btn btn-default  list-btn" href="'.$url.'" role="button" data-toggle="tooltip" title="'.gT('Group summary').'"><span class="glyphicon glyphicon-list-alt " ></span></a>';
+        }
 
         // Delete
-        if($oSurvey->active != "Y" && Permission::model()->hasSurveyPermission($this->sid,'surveycontent','delete' ) && $sumresult4 > 0)
+        if($oSurvey->active != "Y" && Permission::model()->hasSurveyPermission($this->sid,'surveycontent','delete' ))
         {
             $condarray = getGroupDepsForConditions($this->sid, "all", $this->gid, "by-targgid");
             if(is_null($condarray))
             {
                 $confirm = 'if (confirm(\''.gT("Deleting this group will also delete any questions and answers it contains. Are you sure you want to continue?","js").'\')) { window.open(\''.Yii::app()->createUrl("admin/questiongroups/sa/delete/surveyid/$this->sid/gid/$this->gid").'\',\'_top\'); };';
                 $button .= '<a class="btn btn-default"  data-toggle="tooltip" title="'.gT("Delete").'" href="#" role="button"
-                            onclick="'.$confirm.'">
-                                <span class="text-danger glyphicon glyphicon-trash"></span>
-                            </a>';
+                onclick="'.$confirm.'">
+                <span class="text-danger glyphicon glyphicon-trash"></span>
+                </a>';
             }
             else
             {
                 $alert = 'alert(\''.gT("Impossible to delete this group because there is at least one question having a condition on its content","js").'\'); return false;';
                 $button .= '<a class="btn btn-default"  data-toggle="tooltip" title="'.gT("Delete").'" href="#" role="button"
-                            onclick="'.$alert.'">
-                                <span class="text-danger glyphicon glyphicon-trash"></span>
-                            </a>';
+                onclick="'.$alert.'">
+                <span class="text-danger glyphicon glyphicon-trash"></span>
+                </a>';
             }
         }
 
@@ -308,9 +348,9 @@ class QuestionGroup extends LSActiveRecord
         if (parent::beforeSave())
         {
             $surveyIsActive = Survey::model()->findByPk($this->sid)->active !== 'N';
-
-            if ($surveyIsActive && $this->getIsNewRecord())
+            if ($surveyIsActive && $this->getIsNewRecord()) /* And for multi lingual, when add a new language ? */
             {
+                $this->addError('gid',gT("You can not add a group if survey is active."));
                 return false;
             }
             return true;
@@ -321,5 +361,17 @@ class QuestionGroup extends LSActiveRecord
         }
     }
 
+    /**
+     * Used in frontend helper, buildsurveysession.
+     * @param int $surveyid
+     * @return int
+     */
+    public static function getTotalGroupsWithoutQuestions($surveyid)
+    {
+        $sQuery= "select count(*) from {{groups}}
+            left join {{questions}} on  {{groups}}.gid={{questions}}.gid
+            where {{groups}}.sid={$surveyid} and qid is null";
+        return Yii::app()->db->createCommand($sQuery)->queryScalar();
+    }
+
 }
-?>
