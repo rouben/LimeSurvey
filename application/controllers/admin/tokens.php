@@ -48,7 +48,7 @@ class tokens extends Survey_Common_Action
         $aData['surveyprivate'] = $thissurvey['anonymized'];
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['buttons']['view']=TRUE;
 
@@ -116,7 +116,7 @@ class tokens extends Survey_Common_Action
                 $hostencryption = strtoupper($thissurvey['bounceaccountencryption']);
             }
 
-            list($hostname, $port) = explode(':', $hostname); // deprecated: split(':', $hostname);
+            @list($hostname, $port) = explode(':', $hostname);
 
             if (empty($port))
             {
@@ -379,27 +379,126 @@ class tokens extends Survey_Common_Action
         $aData['aLanguages']                    = $aLanguages;
         $surveyinfo                             = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData["surveyinfo"]                    = $surveyinfo;
-        $aData['title_bar']['title']            = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title']            = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]        = true;
         $aData['sidemenu']['state'] = false;
         $aData['token_bar']['buttons']['view']  = true;
 
         /// FOR GRID View
         $model =  TokenDynamic::model($iSurveyId);
-        if(isset($_GET['TokenDynamic'])) {
-            $model->setAttributes($_GET['TokenDynamic'],false);
+        $filterForm = Yii::app()->request->getPost('TokenDynamic', false);
+        if($filterForm ){
+            $model->setAttributes($filterForm ,false);
         }
 
         $aData['model'] = $model;
 
         // Set number of page
-        if (isset($_GET['pageSize'])) {
-            Yii::app()->user->setState('pageSize',(int)$_GET['pageSize']);
+        if (isset($_POST['pageSize'])) {
+            Yii::app()->user->setState('pageSize',(int)$_POST['pageSize']);
         }
 
         $aData['massiveAction'] = App()->getController()->renderPartial('/admin/token/massive_actions/_selector', array(), true, false);
 
         $this->_renderWrappedTemplate('token', array('browse'), $aData);
+    }
+
+    /**
+     * The fields with a value "lskeep" will not be updated
+     */
+    public function editMultiple()
+    {
+        $aTokenIds = json_decode(Yii::app()->request->getPost('sItems'));
+        $iSurveyId = Yii::app()->request->getPost('sid');
+        $aResults     = array();
+
+        if ( Permission::model()->hasSurveyPermission($iSurveyId, 'tokens', 'update') ){
+            // CHECK TO SEE IF A TOKEN TABLE EXISTS FOR THIS SURVEY
+            if (tableExists('{{tokens_' . $iSurveyId . '}}')){
+
+                // First we create the array of fields to update
+                $aData = array();
+                $aResults['global']['result']  = true;
+                // Valid from
+                if (trim(Yii::app()->request->getPost('validfrom', 'lskeep' )) != 'lskeep'){
+                    if (trim(Yii::app()->request->getPost('validfrom', 'lskeep')) == '')
+                        $aData['validfrom'] = null;
+                    else
+                        $aData['validfrom']= date('Y-m-d H:i:s', strtotime(trim($_POST['validfrom'])));
+                }
+
+                // Valid until
+                if (trim(Yii::app()->request->getPost('validuntil', 'lskeep')) != 'lskeep'){
+                    if (trim(Yii::app()->request->getPost('validuntil')) == '')
+                        $aData['validuntil'] = null;
+                    else
+                        $aData['validuntil'] = date('Y-m-d H:i:s', strtotime(trim($_POST['validuntil'])));
+                }
+
+                // Email
+                if (trim(Yii::app()->request->getPost('email', 'lskeep')) != 'lskeep'){
+                    $isValid = preg_match('/^([a-zA-Z0-9.!#$%&’*+\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+))(,([a-zA-Z0-9.!#$%&’*+\/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)))*$/', Yii::app()->request->getPost('email'));
+                    if ($isValid)
+                        $aData['email'] = 'lskeep';
+                    else
+                        $aData['email'] = Yii::app()->request->getPost('email');
+                }
+
+                // Core Fields
+                $aCoreTokenFields = array('firstname', 'lastname',  'emailstatus', 'token', 'language', 'sent', 'remindersent', 'completed', 'usesleft' );
+                foreach($aCoreTokenFields as $sCoreTokenField)
+                if (trim(Yii::app()->request->getPost($sCoreTokenField, 'lskeep')) != 'lskeep'){
+                    $aData[$sCoreTokenField] = flattenText(Yii::app()->request->getPost($sCoreTokenField));
+                }
+
+                // Attibutes fields
+                $attrfieldnames = GetParticipantAttributes($iSurveyId);
+                foreach ($attrfieldnames as $attr_name => $desc){
+                    if (trim(Yii::app()->request->getPost($attr_name, 'lskeep')) != 'lskeep'){
+                        $value = flattenText(Yii::app()->request->getPost($attr_name));
+                        if ($desc['mandatory'] == 'Y' && trim($value) == '') {
+                            Yii::app()->setFlashMessage(sprintf(gT('%s cannot be left empty'), $desc['description']), 'error');
+                            $this->getController()->refresh();
+                        }
+                        $aData[$attr_name] = $value;
+                    }
+                }
+
+                if (count($aData) > 0){
+                    foreach ($aTokenIds as $iTokenId){
+                        $iTokenId = (int) $iTokenId;
+                        $token = Token::model($iSurveyId)->find('tid=' . $iTokenId);
+
+                        foreach ($aData as $k => $v){
+                            $token->$k = $v;
+                        }
+
+                        $bUpdateSuccess = $token->update();
+                        if ( $bUpdateSuccess ){
+                            $aResults[$iTokenId]['status']    = true;
+                            $aResults[$iTokenId]['message']   = gT('Updated');
+                        }else{
+                            $aResults[$iTokenId]['status']    = false;
+                            $aResults[$iTokenId]['message']   = $token->error;
+                        }
+                    }
+                }else{
+                    $aResults['global']['result']  = false;
+                    $aResults['global']['message'] = gT('Nothing to update');
+                }
+
+            }else{
+                $aResults['global']['result']  = false;
+                $aResults['global']['message'] = gT('No participant table found for this survey!');
+            }
+        }else{
+            $aResults['global']['result'] = false;
+            $aResults['global']['message'] = gT("We are sorry but you don't have permissions to do this.");
+        }
+
+
+        Yii::app()->getController()->renderPartial('/admin/token/massive_actions/_update_results', array('aResults'=>$aResults));
+
     }
 
     /**
@@ -553,7 +652,7 @@ class tokens extends Survey_Common_Action
 
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['buttons']['view']=TRUE;
         $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokens.js');
@@ -822,7 +921,7 @@ class tokens extends Survey_Common_Action
         $aData = array();
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['savebutton']['form'] = TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;  // Close button
@@ -982,7 +1081,7 @@ class tokens extends Survey_Common_Action
         $aData = array();
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;  // Close button
 
@@ -1204,7 +1303,7 @@ class tokens extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;  // Close button
 
@@ -1236,6 +1335,8 @@ class tokens extends Survey_Common_Action
 
         Yii::app()->loadHelper('surveytranslator');
         Yii::app()->loadHelper('/admin/htmleditor');
+        Yii::app()->session['FileManagerContext'] = "edit:emailsettings:{$iSurveyId}";
+        initKcfinder();
         Yii::app()->loadHelper('replacements');
 
         $token = Token::model($iSurveyId)->find();
@@ -1509,12 +1610,12 @@ class tokens extends Survey_Common_Action
                                 }
                             }
                             $tokenoutput .= htmlspecialchars(ReplaceFields("{$emrow['tid']}: {FIRSTNAME} {LASTNAME} ({EMAIL})", $fieldsarray)). "<br />\n";
-                            if (Yii::app()->getConfig("emailsmtpdebug") == 2)
+                            if (Yii::app()->getConfig("emailsmtpdebug") > 1)
                             {
                                 $tokenoutput .= $maildebug;
                             }
                         } else {
-                            $tokenoutput .= htmlspecialchars(ReplaceFields(gT("Email to {FIRSTNAME} {LASTNAME} ({EMAIL}) failed. Error message:",'unescaped') . " " . $maildebug , $fieldsarray)). "<br />";
+                            $tokenoutput .= sprintf(htmlspecialchars(ReplaceFields("{$emrow['tid']}: {FIRSTNAME} {LASTNAME} ({EMAIL}). Error message: %s", $fieldsarray)),$maildebug) . "<br />\n";
                             $bSendError=true;
                         }
                     }
@@ -1592,7 +1693,7 @@ class tokens extends Survey_Common_Action
         $aData = array();
 
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=true;
         $aData['sidemenu']['state'] = false;
         $aData['token_bar']['exportbutton']['form']=true;
@@ -1714,7 +1815,7 @@ class tokens extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;  // Close button
 
@@ -1993,7 +2094,7 @@ class tokens extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;
         $this->registerScriptFile( 'ADMIN_SCRIPT_PATH', 'tokensimport.js');
@@ -2340,7 +2441,7 @@ class tokens extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
 
 
@@ -2498,7 +2599,7 @@ class tokens extends Survey_Common_Action
 
         $aData['sidemenu']['state'] = false;
         $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
 
         $this->_renderWrappedTemplate('token', array( 'bounce'), $aData);
     }
@@ -2568,7 +2669,7 @@ class tokens extends Survey_Common_Action
         $surveyinfo = $oSurvey->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $aData['token_bar']['savebutton']['form'] = TRUE;
         $aData['token_bar']['closebutton']['url'] = 'admin/tokens/sa/index/surveyid/'.$iSurveyId;
@@ -2694,7 +2795,7 @@ class tokens extends Survey_Common_Action
         $surveyinfo = Survey::model()->findByPk($iSurveyId)->surveyinfo;
         $aData['sidemenu']['state'] = false;
         $aData["surveyinfo"] = $surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyId.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyId.")";
         $aData['sidemenu']["token_menu"]=TRUE;
         $this->_renderWrappedTemplate('token', 'tokenwarning', $aData);
         }

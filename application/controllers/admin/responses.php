@@ -190,7 +190,7 @@ class responses extends Survey_Common_Action
                         if ($qidattributes['show_comment'] == 1)
                             $fnames[] = array($field['fieldname'], "{$filenum} - {$question} (".gT('Comment').")",'code'=>viewHelper::getFieldCode($field).'(comment)', "type" => "|", "metadata" => "comment", "index" => $i);
 
-                        $fnames[] = array($field['fieldname'], "{$filenum} - {$question} (".gT('File name').")",'code'=>viewHelper::getFieldCode($field).'(name)', "type" => "|", "metadata" => "name", "index" => $i);
+                        $fnames[] = array($field['fieldname'], "{$filenum} - {$question} (".gT('File name').")",'code'=>viewHelper::getFieldCode($field).'(name)', "type" => "|", "metadata" => "name", "index" => $i, 'qid'=>$field['qid']);
                         $fnames[] = array($field['fieldname'], "{$filenum} - {$question} (".gT('File size').")",'code'=>viewHelper::getFieldCode($field).'(size)', "type" => "|", "metadata" => "size", "index" => $i);
 
                         //$fnames[] = array($field['fieldname'], "File ".($i+1)." - ".$field['question']." (extension)", "type"=>"|", "metadata"=>"ext",     "index"=>$i);
@@ -280,8 +280,8 @@ class responses extends Survey_Common_Action
                                             break;
                                         case "name":
                                             $answervalue = CHtml::link(
-                                                $oPurifier->purify(rawurldecode($phparray[$index][$metadata])),
-                                                $this->getController()->createUrl("/admin/responses",array("sa"=>"actionDownloadfile","surveyid"=>$surveyid,"iResponseId"=>$iId,"sFileName"=>$phparray[$index][$metadata]))
+                                                htmlspecialchars($oPurifier->purify(rawurldecode($phparray[$index][$metadata]))),
+                                                $this->getController()->createUrl("/admin/responses",array("sa"=>"actionDownloadfile","surveyid"=>$surveyid,"iResponseId"=>$iId,"iQID"=>$fnames[$i]['qid'],"iIndex"=>$index))
                                             );
                                             break;
                                         default:
@@ -414,9 +414,14 @@ class responses extends Survey_Common_Action
             $aViewUrls                  = array('listResponses_view');
             $model                      =  SurveyDynamic::model($iSurveyId);
 
+            // Reset filters from stats
+            if (Yii::app()->request->getParam('filters') == "reset"){
+                Yii::app()->user->setState('sql_'.$iSurveyId,'');
+            }
+
+
             // Page size
-            if (Yii::app()->request->getParam('pageSize'))
-            {
+            if (Yii::app()->request->getParam('pageSize')){
                 Yii::app()->user->setState('pageSize',(int)Yii::app()->request->getParam('pageSize'));
             }
 
@@ -425,8 +430,7 @@ class responses extends Survey_Common_Action
             // So we pass over the safe validation and directly set attributes (second parameter of setAttributes to false).
             // see: http://www.yiiframework.com/wiki/161/understanding-safe-validation-rules/
             // see: http://www.yiiframework.com/doc/api/1.1/CModel#setAttributes-detail
-            if(Yii::app()->request->getParam('SurveyDynamic'))
-            {
+            if(Yii::app()->request->getParam('SurveyDynamic')){
                 $model->setAttributes(Yii::app()->request->getParam('SurveyDynamic'),false);
             }
 
@@ -509,22 +513,51 @@ class responses extends Survey_Common_Action
     */
     public function actionDelete($surveyid)
     {
+        Yii::import('application.helpers.admin.ajax_helper', true);
+
         $iSurveyId = (int) $surveyid;
         if (Permission::model()->hasSurveyPermission($iSurveyId,'responses','delete'))
         {
             $ResponseId  = ( Yii::app()->request->getPost('sItems') != '') ? json_decode(Yii::app()->request->getPost('sItems')):json_decode(Yii::app()->request->getPost('sResponseId'), true);
             $aResponseId = (is_array($ResponseId))?$ResponseId:array($ResponseId);
 
+            $errors = 0;
+            $timingErrors = 0;
+
             foreach($aResponseId as $iResponseId)
             {
-                Response::model($iSurveyId)->findByPk($iResponseId)->delete(true);
-                $oSurvey=Survey::model()->findByPk($iSurveyId);
-                if($oSurvey->savetimings == "Y"){// TODO : add it to response delete (maybe test if timing table exist)
-                    SurveyTimingDynamic::model($iSurveyId)->deleteByPk($iResponseId);
+                $beforeDataEntryDelete = new PluginEvent('beforeDataEntryDelete');
+                $beforeDataEntryDelete->set('iSurveyID',$iSurveyId);
+                $beforeDataEntryDelete->set('iResponseID',$iResponseId);
+                App()->getPluginManager()->dispatchEvent($beforeDataEntryDelete);
+
+                $response = Response::model($iSurveyId)->findByPk($iResponseId);
+                if ($response) {
+                    $result = $response->delete(true);
+                } else {
+                    $errors++;
+                }
+
+                if (!$result) {
+                    $errors++;
+                } else {
+                    $oSurvey=Survey::model()->findByPk($iSurveyId);
+                    // TODO : add it to response delete (maybe test if timing table exist)
+                    if ($oSurvey->savetimings == "Y") {
+                        $result = SurveyTimingDynamic::model($iSurveyId)->deleteByPk($iResponseId);
+                        if (!$result) {
+                            $timingErrors++;
+                        }
+                    }
                 }
             }
 
-            return $aResponseId;
+            if ($errors == 0 && $timingErrors == 0) {
+                ls\ajax\AjaxHelper::outputSuccess(gT('Response(s) deleted.'));
+            } else {
+                ls\ajax\AjaxHelper::outputError(gT('Error during response deletion.'));
+            }
+
         }
     }
 
@@ -534,34 +567,40 @@ class responses extends Survey_Common_Action
     * @access public
     * @param $iSurveyId : survey id
     * @param $iResponseId : response if
-    * @param $sFileName : The filename
+    * @param $iQID : The question ID
     * @return application/octet-stream
     */
-    public function actionDownloadfile($iSurveyId,$iResponseId,$sFileName)
+    public function actionDownloadfile($iSurveyId, $iResponseId, $iQID, $iIndex)
     {
+        $iIndex=(int)$iIndex;
+        $iResponseId=(int)$iResponseId;
+        $iQID=(int)$iQID;
+
         if(Permission::model()->hasSurveyPermission($iSurveyId,'responses','read'))
         {
             $oResponse = Response::model($iSurveyId)->findByPk($iResponseId);
-            foreach ($oResponse->getFiles() as $aFile)
+            $aQuestionFiles=$oResponse->getFiles($iQID);
+            if (isset($aQuestionFiles[$iIndex]))
             {
-                if (rawurldecode($aFile['name']) == rawurldecode($sFileName))
+               $aFile=$aQuestionFiles[$iIndex];
+                $sFileRealName = Yii::app()->getConfig('uploaddir') . "/surveys/" . $iSurveyId . "/files/" . $aFile['filename'];
+                if (file_exists($sFileRealName))
                 {
-                    $sFileRealName = Yii::app()->getConfig('uploaddir') . "/surveys/" . $iSurveyId . "/files/" . $aFile['filename'];
-                    if (file_exists($sFileRealName))
-                    {
-                        @ob_clean();
-                        header('Content-Description: File Transfer');
-                        header('Content-Type: application/octet-stream');// Find the real type ?
-                        header('Content-Disposition: attachment; filename="' . rawurldecode($aFile['name']) . '"');
-                        header('Content-Transfer-Encoding: binary');
-                        header('Expires: 0');
-                        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-                        header('Pragma: public');
-                        header('Content-Length: ' . filesize($sFileRealName));
-                        readfile($sFileRealName);
-                        exit;
+                    $mimeType=CFileHelper::getMimeType($sFileRealName, null, false);
+                    if(is_null($mimeType)){
+                        $mimeType="application/octet-stream";
                     }
-                    break;
+                    @ob_clean();
+                    header('Content-Description: File Transfer');
+                    header('Content-Type: '.$mimeType);
+                    header('Content-Disposition: attachment; filename="' . sanitize_filename(rawurldecode($aFile['name'])) . '"');
+                    header('Content-Transfer-Encoding: binary');
+                    header('Expires: 0');
+                    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+                    header('Pragma: public');
+                    header('Content-Length: ' . filesize($sFileRealName));
+                    readfile($sFileRealName);
+                    exit;
                 }
             }
             Yii::app()->setFlashMessage(gT("Sorry, this file was not found."),'error');
@@ -611,6 +650,62 @@ class responses extends Survey_Common_Action
                 Yii::app()->setFlashMessage(gT("The requested files do not exist on the server."),'error');
                 $this->getController()->redirect(array("admin/responses","sa"=>"browse","surveyid"=>$iSurveyId));
             }
+        }
+    }
+
+    /**
+     * Delete all uploaded files for one response.
+     * @return void
+     */
+    public function actionDeleteAttachments()
+    {
+        Yii::import('application.helpers.admin.ajax_helper', true);
+
+        $request     = Yii::app()->request;
+        $surveyid    = (int) $request->getPost('surveyid');
+        $sid         = (int) $request->getPost('sid');
+        $surveyId    = $sid ? $sid : $surveyid;
+        $responseId  = (int) $request->getPost('sResponseId');
+        $stringItems = json_decode($request->getPost('sItems'));
+        // Cast all ids to int.
+        $items       = array_map(
+            function ($id) {
+                return (int) $id;
+            },
+            is_array($stringItems) ? $stringItems : array()
+        );
+        $responseIds = $responseId ? array($responseId) : $items;
+
+        $allErrors = array();
+        $allSuccess = 0;
+
+        if (Permission::model()->hasSurveyPermission($surveyId, 'responses', 'delete')) {
+            foreach ($responseIds as $responseId) {
+                $response = Response::model($surveyId)->findByPk($responseId);
+                if (!empty($response)) {
+                    list($success, $errors) = $response->deleteFilesAndFilename();
+                    if (empty($errors)) {
+                        $allSuccess += $success;
+                    } else {
+                        // Could not delete all files.
+                        $allErrors = array_merge($allErrors, $errors);
+                    }
+                } else {
+                    $allErrors[] = sprintf(gT('Found no response with ID %d'), $responseId);
+                }
+            }
+
+            if ($allErrors) {
+                ls\ajax\AjaxHelper::outputError(
+                    gT('Error: Could not delete some files: ') . implode(', ', $allErrors)
+                );
+            } else {
+                // All is OK.
+                ls\ajax\AjaxHelper::outputSuccess(sprintf(ngT('%d file deleted.|%d files deleted.',$allSuccess), $allSuccess));
+            }
+        } else {
+            // No permission.
+            ls\ajax\AjaxHelper::outputNoPermission();
         }
     }
 
@@ -872,7 +967,7 @@ class responses extends Survey_Common_Action
                 if (file_exists($tmpdir . basename($file['filename'])))
                 {
                     $filelist[] = array(PCLZIP_ATT_FILE_NAME => $tmpdir . basename($file['filename']),
-                        PCLZIP_ATT_FILE_NEW_FULL_NAME => sprintf("%05s_%02s_%s", $response->id, $filecount, rawurldecode($file['name'])));
+                        PCLZIP_ATT_FILE_NEW_FULL_NAME => sprintf("%05s_%02s_%s", $response->id, $filecount, sanitize_filename(rawurldecode($file['name']))));
                 }
             }
         }
@@ -889,7 +984,7 @@ class responses extends Survey_Common_Action
             {
                 @ob_clean();
                 header('Content-Description: File Transfer');
-                header('Content-Type: application/octet-stream');
+                header('Content-Type: application/zip, application/octet-stream');
                 header('Content-Disposition: attachment; filename=' . basename($zipfilename));
                 header('Content-Transfer-Encoding: binary');
                 header('Expires: 0');

@@ -79,13 +79,10 @@ return array(
     ),
 
     // jQuery Cookie
-    'jquery-cookie' => array(
-        'basePath' => 'third_party.jquery-cookie',
+    'js-cookie' => array(
+        'basePath' => 'third_party.js-cookie',
         'js' => array(
-            'jquery.cookie.js'
-        ),
-        'depends' => array(
-            'jquery'
+            'js.cookie.js'
         )
     ),
 
@@ -232,7 +229,7 @@ return array(
         )
     ),
 
-    // Decimal.js calculate in js 
+    // Decimal.js calculate in js
     'decimal' => array(
         'basePath' => 'third_party.decimal',
         'js' => array(
@@ -242,7 +239,7 @@ return array(
         )
     ),
 
-    // Moment.js use real simple dateTime modification 
+    // Moment.js use real simple dateTime modification
     'moment' => array(
         'basePath' => 'third_party.moment',
         'js' => array(
@@ -319,7 +316,7 @@ return array(
             'es6-promise.auto.min.js'
         )
     ),
-    
+
     'dom2image' => array(
         'basePath' => 'third_party.dom-to-image',
         'js' => array(
@@ -339,7 +336,15 @@ return array(
             'jquery',
             'bootstrap'
         )
+    ),
+    'jszip' => array(
+        'basePath' => 'third_party.jszip',
+        'js' => array(
+            'jszip.js',
+            'fileSaver.js',
+        ),
+        'depends' => array(
+            'jquery',
+        )
     )
-
-
 );

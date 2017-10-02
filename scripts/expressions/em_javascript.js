@@ -130,9 +130,19 @@ function LEMsumifop()
         var reg = new RegExp(value.substr(1,value.length-2));
     }
     for (i=2;i<arguments.length;++i) {
-        var arg = arguments[i];
-        switch(op)
-        {
+        var arg = arguments[i] || 0;
+        if (LEMis_numeric(arg)){
+            try{
+                arg = new Decimal(arg);
+            } catch(e){
+                arg = new Decimal(arg.toString().replace(/,/,'.'));
+            }
+        }
+        else if(arg === true){
+            arg=1;
+        }
+
+        switch(op) {
             case '==': case 'eq': if (arg == value) { result += arg; } break;
             case '>=': case 'ge': if (arg >= value) { result += arg; } break;
             case '>':  case 'gt': if (arg > value) { result += arg; } break;
@@ -166,7 +176,7 @@ function LEMsum()
     for (i=0;i<arguments.length;++i) {
         var arg = arguments[i] || 0;
         if (LEMis_numeric(arg)){
-            try{ 
+            try{
                 arg = new Decimal(arg);
             } catch(e){
                 arg = new Decimal(arg.toString().replace(/,/,'.'));
@@ -205,12 +215,17 @@ function LEMis_float(a)
 }
 
 /**
- * Test if mixed_var is_int same way than PHP
- * From: http://phpjs.org/functions/is_int/
+ * Test if mixed_var is in integer value (no matter the real type)
  */
 function LEMis_int(mixed_var)
 {
-  return mixed_var === +mixed_var && isFinite(mixed_var) && !(mixed_var % 1);
+    try {
+        var iCheckValue = new Decimal(mixed_var)  
+    }  
+    catch (err) {
+        return false;
+    }
+    return iCheckValue.isInteger();
 }
 /**
  * Test if mixed_var is a PHP numeric value
@@ -370,10 +385,12 @@ function LEMimplode()
 /*
  * Returns true if within matches the pattern.  Pattern must start and end with the '/' character
  */
-function LEMregexMatch(pattern,within)
+function LEMregexMatch(sRegExp,within)
 {
     try {
-        var reg = new RegExp(pattern.substring(1,pattern.length-2));
+        var flags = sRegExp.replace(/.*\/([gimy]*)$/, '$1');
+        var pattern = sRegExp.replace(new RegExp('^/(.*?)/'+flags+'$'), '$1').trim();
+        var reg = new RegExp(pattern, flags); // Note that the /u flag crashes IE11       
         return reg.test(within);
     }
     catch (err) {
@@ -545,6 +562,7 @@ function LEMval(alias)
         }
         case 'shown': {
             value = htmlspecialchars_decode(document.getElementById(whichJsName).value);
+            var shown="";
             switch(attr.type)
             {
                 case 'G': //GENDER drop-down list
@@ -560,10 +578,10 @@ function LEMval(alias)
                 case 'F': //ARRAY (Flexible) - Row Format
                 case 'R': //RANKING STYLE
                     if (attr.type == 'O' && varName.match(/comment$/)) {
-                        answer = value;
+                        answer = htmlentities(value);
                     }
                     else if ((attr.type == 'L' || attr.type == '!') && varName.match(/_other$/)) {
-                        answer = value;
+                        answer = htmlentities(value);
                     }
                     else {
                         which_ans = '0~' + value;
@@ -607,7 +625,8 @@ function LEMval(alias)
                 case 'I': //Language Question
                 case '|': //File Upload
                 case 'X': //BOILERPLATE QUESTION
-                        shown = value;
+                        shown = htmlentities(value);
+                    break;
                 case 'M': //Multiple choice checkbox
                 case 'P': //Multiple choice with comments checkbox + text
                     if (typeof attr.question === 'undefined' || value == '') {
@@ -620,7 +639,7 @@ function LEMval(alias)
                                 shown = parseFloat(numtest.valueOf());
                             }
                             catch(e) {
-                                shown = value;
+                                shown = htmlentities(value);
                             }
                         }
                         else {
@@ -629,8 +648,8 @@ function LEMval(alias)
                     }
                     break;
             }
+            return shown;
         }
-            return htmlspecialchars_decode(shown);
         case 'gid':
             return attr.gid;
         case 'grelevance':
@@ -705,7 +724,7 @@ function LEMval(alias)
                         break;
                     case 'N': //NUMERICAL QUESTION TYPE
                     case 'K': //MULTIPLE NUMERICAL QUESTION
-                    
+
                 }
             }
 
@@ -724,7 +743,7 @@ function LEMval(alias)
                     } catch(e){
                         var numtest = new Decimal(value.toString().replace(/,/,'.'));
                     }
-                
+
                     // If value is on same page : value use LEMradix, else use . (dot) : bug #10001
                     // if (LEMradix === ',' && onSamePage )
                     // {
@@ -735,7 +754,7 @@ function LEMval(alias)
                         value = str_repeat('0', length).substr(0,(length - value.length))+''+value.toString();
                     }
                 }
-                return parseFloat(value);
+                return Number(value);
             }
 
             // convert content in date questions to standard format yy-mm-dd to facilitate use in EM (comparisons, min/max etc.)
@@ -3166,9 +3185,14 @@ function time () {
     return Math.floor(new Date().getTime() / 1000);
 }
 
-// updates the repeated headings in a dynamic table
-function updateHeadings(tab, rep)
+/**
+ * Updates the repeated headings in a dynamic table.
+ * @param {string} questionId
+ * @param {number} rep        - Repetition
+ */
+function updateHeadings(questionId, rep)
 {
+    var tab = $('#' + questionId).find('table.question');
     tab.find('.repeat').remove();
     var header = tab.find('thead>tr');
     var trs = tab.find('tr:visible');
@@ -3182,9 +3206,16 @@ function updateHeadings(tab, rep)
     });
 }
 
-// updates the colors in a dynamic table
-function updateColors(tab)
+/**
+ * Updates the colors in a dynamic table.
+ * No use of jQuery in this function due to speed reasons.
+ * Get all "#questionId table.question tr:visible" and reset
+ * class array1/array2.
+ * @param {string} questionId
+ */
+function updateColors(questionId)
 {
+    var tab = $('#' + questionId).find('table.question');
     var trs = tab.find('tr:visible');
     trs.each(function(i, tr)
     {

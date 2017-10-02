@@ -389,7 +389,7 @@ $config['bPdfQuestionBold'] = '0';		  // Questions in bold (1) or normal (0)
 $config['bPdfQuestionBorder'] = '1'; 	  // Border in questions. Accepts 0:no border, 1:border
 $config['bPdfResponseBorder'] = '1';	  // Border in responses. Accepts 0:no border, 1:border
 
-// QueXML-PDF: If set to true, the printable_help attribute will be visible on the exported PDF questionnaires
+// QueXML-PDF: If set to true, the printable_help attribute will be visible on the exported PDF survey
 // If used, the appearance (font size, justification, etc.) may be adjusted by editing td.questionHelpBefore and $helpBeforeBorderBottom of quexml.
 $config['quexmlshowprintablehelp'] = false;
 
@@ -593,16 +593,13 @@ $config['InsertansUnsupportedtypes'] = array();
 $config['proxy_host_name'] = '';
 $config['proxy_host_port'] = 80;
 
+/** Forced superadmin rights, users in this array can not have superadmin total right disable.
+ * Default use the user created at the installation.
+ * @var integer[]
+ */
+$config['forcedsuperadmin'] = [1];
 
 // === Advanced Setup
-// The following parameters need information from config.php
-// and thus are defined here (After reading your config.php file).
-// This means that if you want to tweak these very advanced parameters
-// you'll have to do this in this file and not in config.php
-// In this case, don't forget to backup your config-defaults.php settings when upgrading LS
-// and report them to the new config-defaults.php file (Do not simply overwrite the new
-// config-defaults file with your old one
-
 //The following url and dir locations do not need to be modified unless you have a non-standard
 //LimeSurvey installation. Do not change unless you know what you are doing.
 

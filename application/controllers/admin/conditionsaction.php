@@ -105,7 +105,7 @@ class conditionsaction extends Survey_Common_Action {
 
         $aData['sidemenu']['state'] = false;
         $surveyinfo = Survey::model()->findByPk($iSurveyID)->surveyinfo;
-        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']."(".gT("ID").":".$iSurveyID.")";
+        $aData['title_bar']['title'] = $surveyinfo['surveyls_title']." (".gT("ID").":".$iSurveyID.")";
         $aData['questionbar']['closebutton']['url'] = 'admin/questions/sa/view/surveyid/'.$iSurveyID.'/gid/'.$gid.'/qid/'.$qid;  // Close button
         $aData['questionbar']['buttons']['conditions'] = TRUE;
 
@@ -598,8 +598,8 @@ class conditionsaction extends Survey_Common_Action {
                         true
                     );
                 }
-                // If we have a condition, allways reset the condition, this can fix old import (see #09344)
-                LimeExpressionManager::UpgradeConditionsToRelevance(NULL,$qid);
+                // If we have a condition, all ways reset the condition, this can fix old import (see #09344)
+                // LimeExpressionManager::UpgradeConditionsToRelevance(NULL,$qid);
             }
             else
             { // no condition ==> disable delete all conditions button, and display a simple comment

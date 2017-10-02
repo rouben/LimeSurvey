@@ -20,7 +20,7 @@
     * @author Thomas M. White (TMSWhite)
     * @author Denis Chenu <http://sondages.pro>
     */
-    include_once('em_core_helper.php');
+    Yii::import('application.helpers.expressions.em_core_helper', true);
     Yii::app()->loadHelper('database');
     Yii::app()->loadHelper('frontend');
     Yii::app()->loadHelper('surveytranslator');
@@ -104,6 +104,7 @@
         * @var array
         */
         private $knownVars;
+
         /**
         * maps qcode varname to SGQA code
         *
@@ -111,6 +112,7 @@
         * @var array
         */
         private $qcode2sgqa;
+
         /**
         * variables temporarily set for substitution purposes
         *
@@ -125,6 +127,7 @@
         * @var array
         */
         private $tempVars;
+
         /**
         * Array of relevance information for each page (gseq), indexed by gseq.
         * Within a page, it contains a sequential list of the results of each relevance equation processed
@@ -143,6 +146,7 @@
         * @var array
         */
         private $pageRelevanceInfo;
+
         /**
         *
         * @var array
@@ -3596,7 +3600,7 @@
         * @param boolean $allOnOnePage - if true (like for survey_format), uses certain optimizations
         * @return boolean - true if $fieldmap had been re-created, so ExpressionManager variables need to be re-set
         */
-        private function setVariableAndTokenMappingsForExpressionManager($surveyid,$forceRefresh=false,$anonymized=false,$allOnOnePage=false)
+        public function setVariableAndTokenMappingsForExpressionManager($surveyid,$forceRefresh=false,$anonymized=false,$allOnOnePage=false)
         {
             if (isset($_SESSION['LEMforceRefresh'])) {
                 unset($_SESSION['LEMforceRefresh']);
@@ -3611,7 +3615,7 @@
             // TODO - do I need to force refresh, or trust that createFieldMap will cache langauges properly?
             $fieldmap=createFieldMap($surveyid,$style='full',$forceRefresh,false,$_SESSION['LEMlang']);
             $this->sid= $surveyid;
-
+            $this->sessid = 'survey_' . $this->sid;
             $this->runtimeTimings[] = array(__METHOD__ . '.createFieldMap',(microtime(true) - $now));
             //      LimeExpressionManager::ShowStackTrace();
 
@@ -3635,7 +3639,13 @@
             $this->qid2validationEqn = array();
             $this->groupSeqInfo = array();
             $this->gseq2relevanceStatus = array();
-
+            /* Fill some static know vars , the used is always $this->knownVars (even if set in templatereplace function) */
+            $this->knownVars['SID'] = array(
+                'code'=>$this->sid,
+                'jsName_on'=>'',
+                'jsName'=>'',
+                'readWrite'=>'N',
+            );
             /* Add the core replacement before question code : needed if use it in equation , use SID to never send error */
             templatereplace("{SID}");
 
@@ -4218,7 +4228,6 @@
                 $this->varNameAttr[$jsVarName] .= "}";
             }
             $this->q2subqInfo = $q2subqInfo;
-
             // Now set tokens
             if (Survey::model()->hasTokens($surveyid) && isset($_SESSION[$this->sessid]['token']) && $_SESSION[$this->sessid]['token'] != '')
             {
@@ -4229,16 +4238,24 @@
                     'jsName'=>'',
                     'readWrite'=>'N',
                 );
+                $this->knownVars['TOKEN'] = array(
+                    'code'=>$_SESSION[$this->sessid]['token'],
+                    'jsName_on'=>'',
+                    'jsName'=>'',
+                    'readWrite'=>'N',
+                );
 
                 $token = Token::model($surveyid)->findByToken($_SESSION[$this->sessid]['token']);
-                foreach ($token as $key => $val)
-                {
-                    $this->knownVars["TOKEN:" . strtoupper($key)] = array(
-                        'code' => $anonymized ? '' : $val,
-                        'jsName_on' => '',
-                        'jsName' => '',
-                        'readWrite' => 'N',
-                    );
+                if($token) {
+                    foreach ($token as $key => $val)
+                    {
+                        $this->knownVars["TOKEN:" . strtoupper($key)] = array(
+                            'code' => $anonymized ? '' : $val,
+                            'jsName_on' => '',
+                            'jsName' => '',
+                            'readWrite' => 'N',
+                        );
+                    }
                 }
             }
             else
@@ -4247,13 +4264,13 @@
                 $attrs = array_keys(getTokenFieldsAndNames($surveyid));
 
                 $blankVal = array(
-                'code'=>'',
-                'type'=>'',
-                'jsName_on'=>'',
-                'jsName'=>'',
-                'readWrite'=>'N',
+                    'code'=>'',
+                    'type'=>'',
+                    'jsName_on'=>'',
+                    'jsName'=>'',
+                    'readWrite'=>'N',
                 );
-
+                // DON'T set $this->knownVars['TOKEN'] = $blankVal; becuase optout/optin can need it, then don't replace this from templatereplace
                 foreach ($attrs as $key)
                 {
                     if (preg_match('/^(firstname|lastname|email|usesleft|token|attribute_\d+)$/',$key))
@@ -7271,13 +7288,15 @@
                      */
                     $afHide = (isset($LEM->qattr[$arg['qid']]['array_filter_style']) ? ($LEM->qattr[$arg['qid']]['array_filter_style'] == '0') : true);
                     $inputSelector = (($arg['type'] == 'R') ? '' :  ' :input:not(:hidden)');
+                    $updateColors = false;
+                    $updateHeadings = false;
                     foreach ($subqParts as $sq)
                     {
                         $rowdividList[$sq['rowdivid']] = $sq['result'];
                         // make sure to update headings and colors for filtered questions (array filter and individual SQ relevance)
                         if( ! empty($sq['type'])) {
+                            $updateColors = true;
                             // js to fix colors
-                            $relParts[] = "updateColors($('#question".$arg['qid']."').find('table.question'));\n";
                             // js to fix headings
                             $repeatheadings = Yii::app()->getConfig("repeatheadings");
                             if(isset($LEM->qattr[$arg['qid']]['repeat_headings']) && $LEM->qattr[$arg['qid']]['repeat_headings'] !== "") {
@@ -7285,8 +7304,7 @@
                             }
                             if($repeatheadings > 0)
                             {
-                                $relParts[] = "updateHeadings($('#question".$arg['qid']."').find('table.question'), "
-                                .$repeatheadings.");\n";
+                                $updateHeadings = true;
                             }
                         }
                         // end
@@ -7385,6 +7403,14 @@
                             $allJsVarsUsed = array_merge($allJsVarsUsed,$sqvars);
                             $relJsVarsUsed = array_merge($relJsVarsUsed,$sqvars);
                         }
+                    }
+
+                    if ($updateColors) {
+                        $relParts[] = "updateColors('question".$arg['qid']."');\n";
+                    }
+
+                    if ($updateHeadings) {
+                        $relParts[] = "updateHeadings('question".$arg['qid']."', " .$repeatheadings.");\n";
                     }
 
                     // Do all tailoring
@@ -8689,25 +8715,33 @@ EOD;
                                 $lang = $_SESSION['LEMlang'];
                                 $value = self::convertNonLatinNumerics($value, $lang);
 
-                                $value=trim($value);
-                                if ($value!="" && $value!="INVALID")
-                                {
-                                    $aAttributes=$LEM->getQuestionAttributesForEM($LEM->sid, $qid,$_SESSION['LEMlang']);
+                                $value = trim($value);
+                                if ($value != "" && $value != "INVALID") {
+                                    $aAttributes = $LEM->getQuestionAttributesForEM($LEM->sid, $qid,$_SESSION['LEMlang']);
                                     if (!isset($aAttributes[$qid])) {
                                         $aAttributes[$qid]=array();
                                     }
-                                    $aDateFormatData=getDateFormatDataForQID($aAttributes[$qid],$LEM->surveyOptions);
+                                    $aDateFormatData = getDateFormatDataForQID($aAttributes[$qid],$LEM->surveyOptions);
                                     // We don't really validate date here : if date is invalid : return 1999-12-01 00:00
-                                    $oDateTimeConverter = new Date_Time_Converter(trim($value), $aDateFormatData['phpdate']);
-                                    $newValue=$oDateTimeConverter->convert("Y-m-d H:i");
-                                    $oDateTimeConverter = new Date_Time_Converter($newValue, "Y-m-d H:i");
-                                    if($value==$oDateTimeConverter->convert($aDateFormatData['phpdate'])) // control if inverse function original value
-                                    {
-                                        $value=$newValue;
-                                    }
-                                    else
-                                    {
-                                        $value="";// Or $value="INVALID" ? : dropdown is OK with this not default.
+                                    // For an explanation of the exclamation mark, see this thread:
+                                    // http://stackoverflow.com/questions/43740037/datetime-converts-wrong-when-system-time-is-30-march
+                                    $dateTime = DateTime::createFromFormat('!' . $aDateFormatData['phpdate'], trim($value));
+                                    if ($dateTime === false) {
+                                        $message = sprintf(
+                                            'Could not convert date %s to format %s. Please check your date format settings.',
+                                            trim($value),
+                                            $aDateFormatData['phpdate']
+                                        );
+                                        $value = "INVALID"; // This don't disable submitting survey  … ("" neither)
+                                        LimeExpressionManager::addFrontendFlashMessage('error', $message, $LEM->sid);
+                                    } else {
+                                        $newValue = $dateTime->format("Y-m-d H:i");
+                                        $newDateTime = DateTime::createFromFormat("!Y-m-d H:i", $newValue);
+                                        if($value == $newDateTime->format($aDateFormatData['phpdate'])) { // control if inverse function original value
+                                            $value = $newValue;
+                                        } else {
+                                            $value = "";// This don't disable submitting survey  … ("INVALID" neither)
+                                        }
                                     }
                                 }
                                 break;
@@ -8748,8 +8782,8 @@ EOD;
                         }
                         $_SESSION[$LEM->sessid][$sq] = $value;
                         $_update = array (
-                        'type'=>$type,
-                        'value'=>$value,
+                            'type'=>$type,
+                            'value'=>$value,
                         );
                         $updatedValues[$sq] = $_update;
                         $LEM->updatedValues[$sq] = $_update;
@@ -8849,6 +8883,7 @@ EOD;
                     return '';
                 }
             }
+
             switch ($attr)
             {
                 case 'varName':
@@ -9227,7 +9262,8 @@ EOD;
             $LEM =& LimeExpressionManager::singleton();
             $LEM->sPreviewMode='logic';
             $aSurveyInfo=getSurveyInfo($sid,$_SESSION['LEMlang']);
-
+            /* All final survey string must be shown in survey language #12208 */
+            Yii::app()->setLanguage(Yii::app()->session['LEMlang']);
             $allErrors = array();
             $warnings = 0;
 
@@ -9258,7 +9294,9 @@ EOD;
                 LimeExpressionManager::StartSurvey($sid, 'survey', $surveyOptions, false,$LEMdebugLevel);
                 $moveResult = LimeExpressionManager::NavigateForwards();
             }
-
+            $surveyname = viewHelper::stripTagsEM(templatereplace('{SURVEYNAME}',array('SURVEYNAME'=>$aSurveyInfo['surveyls_title'])));
+            /* We now get all survey string, then reset to admin language */
+            Yii::app()->setLanguage(Yii::app()->session['adminlang']);
             $qtypes=getQuestionTypeList('','array');
 
             if (is_null($moveResult) || is_null($LEM->currentQset) || count($LEM->currentQset) == 0) {
@@ -9268,7 +9306,6 @@ EOD;
                 );
             }
 
-            $surveyname = viewHelper::stripTagsEM(templatereplace('{SURVEYNAME}',array('SURVEYNAME'=>$aSurveyInfo['surveyls_title'])));
 
             $out = '<div id="showlogicfilediv" class="table-responsive"><h3>' . $LEM->gT('Logic File for Survey # ') . '[' . $LEM->sid . "]: $surveyname</h3>\n";
             $out .= "<table id='logicfiletable' class='table table-bordered'>";
@@ -9437,8 +9474,16 @@ EOD;
                             case 'code_filter':
                             case 'date_max':
                             case 'date_min':
+                                break;
                             case 'em_validation_q_tip':
                             case 'em_validation_sq_tip':
+                            case 'equation':
+                                $LEM->ProcessString($value, $qid,NULL,false,1,1,false,false);
+                                $value = viewHelper::stripTagsEM($LEM->GetLastPrettyPrintExpression());
+                                if ($LEM->em->HasErrors())
+                                {
+                                    ++$errorCount;
+                                }
                                 break;
                             case 'equals_num_value':
                             case 'em_validation_q':
@@ -9775,10 +9820,9 @@ EOD;
                 }
                 $out = "<p class='LEMheading'>$message</p>\n" . $out."</div>";
             }
-
             return array(
-            'errors'=>$allErrors,
-            'html'=>$out
+                'errors'=>$allErrors,
+                'html'=>$out
             );
         }
 
@@ -10244,6 +10288,35 @@ EOD;
             }
 
             return $result;
+        }
+
+        /**
+         * Set currentQset. Used by unit-tests.
+         * @param array $val
+         * @return void
+         */
+        public function setCurrentQset(array $val)
+        {
+            $this->currentQset = $val;
+        }
+
+        /**
+         * Used for unit tests.
+         * @param mixed $val
+         * @return void
+         */
+        public function setKnownVars($val) {
+            $this->knownVars = $val;
+        }
+
+        /**
+         * Used for unit tests.
+         * @param mixed $info
+         * @return void
+         */
+        public function setPageRelevanceInfo($info)
+        {
+            $this->pageRelevanceInfo = $info;
         }
 
     }
